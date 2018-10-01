@@ -1,0 +1,42 @@
+[General]
+ActiveTab=test_session
+
+[KBSession]
+KBTabs\2\TabFile=test_session
+KBTabs\2\TabName=test_session
+KBTabs\2\KBCache="&vecadd1d$a;b;c$float*;float*;float*$__global;__global;__global$NONE;NONE;NONE"
+KBTabs\2\KBVarsByKernel="vecadd1d#a&0&test_input;b&0&test_input;c&0&test_output"
+KBTabs\2\KBRefsByKernel="vecadd1d#a&;b&;c&C:\\work\\github\\EE524A\\Sessions\\test_session\\bin_ref_test_output0.bin"
+KBTabs\2\KBGroupSizes=5#0#0#5#0#0
+KBTabs\2\KBIterations=1
+KBTabs\2\KBConfigurationNames=config_0
+KBTabs\2\KBWorkFlows=
+KBTabs\2\KBWorkFlowsSetting=
+KBTabs\2\KBExternalBinaries=
+KBTabs\2\KBSelectedKernel=vecadd1d
+KBTabs\2\TabCode=C:\\work\\github\\EE524A\\Sessions\\test_session\\program.ir
+KBTabs\2\KBFacadeVisible=true
+KBTabs\2\IsValidation=true
+KBTabs\2\KBServerActive=true
+KBTabs\2\Artifacts="C:\\work\\github\\EE524A\\Sessions\\test_session\\program.ir;"
+KBTabs\2\Reports=
+KBTabs\2\CLFiles=C:\\work\\github\\EE524A\\Sessions\\test_session\\program.cl
+KBTabs\2\IsBinary=false
+KBTabs\2\TabOpt6=
+KBTabs\2\TabOpt7=2
+KBTabs\2\TabOpt10=(local) TCE-WESFIALA
+KBTabs\2\TabOpt17=Intel(R) OpenCL
+KBTabs\2\TabOpt18=GPU: Intel(R) HD Graphics 4600
+KBTabs\2\TabOpt1=true
+KBTabs\2\TabOpt3=false
+KBTabs\2\TabOpt9=Current Operating System
+KBTabs\2\TabOpt11=
+KBTabs\2\TabOpt4=false
+KBTabs\2\TabOpt13=5010
+KBTabs\2\TabOpt14=5999
+KBTabs\2\TabOpt15=true
+KBTabs\2\TabOpt16=20000
+KBTabs\2\TabOpt2=-asm$
+KBTabs\2\TabOpt19=
+KBTabs\2\TabOpt20=
+KBTabs\size=2

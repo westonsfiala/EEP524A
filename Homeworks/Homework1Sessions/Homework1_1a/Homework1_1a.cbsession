@@ -1,12 +1,12 @@
 [General]
-ActiveTab=Homework1_1
+ActiveTab=Homework1_1a
 
 [KBSession]
-KBTabs\2\TabFile=Homework1_1
-KBTabs\2\TabName=Homework1_1
-KBTabs\2\KBCache="&vecadd2d$in_a;in_b;out$float4*;float4*;float4*$__global;__global;__global$NONE;NONE;NONE"
+KBTabs\2\TabFile=Homework1_1a
+KBTabs\2\TabName=Homework1_1a
+KBTabs\2\KBCache="&vecadd2d$in_a;in_b;out$float*;float*;float*$__global;__global;__global$NONE;NONE;NONE"
 KBTabs\2\KBVarsByKernel="vecadd2d#in_a&0&input_buffer;in_b&0&input_buffer;out&0&output_buffer"
-KBTabs\2\KBRefsByKernel="vecadd2d#in_a&;in_b&;out&C:\\work\\github\\EE524A\\Homeworks\\Homework1Sessions\\Homework1_1\\bin_ref_output_buffer0.bin"
+KBTabs\2\KBRefsByKernel="vecadd2d#in_a&;in_b&;out&C:\\work\\github\\EE524A\\Homeworks\\Homework1Sessions\\Homework1_1a\\bin_ref_output_buffer0.bin"
 KBTabs\2\KBGroupSizes=4#4#0#4#4#0
 KBTabs\2\KBIterations=1
 KBTabs\2\KBConfigurationNames=config_0
@@ -14,13 +14,13 @@ KBTabs\2\KBWorkFlows=
 KBTabs\2\KBWorkFlowsSetting=
 KBTabs\2\KBExternalBinaries=
 KBTabs\2\KBSelectedKernel=vecadd2d
-KBTabs\2\TabCode=C:\\work\\github\\EE524A\\Homeworks\\Homework1Sessions\\Homework1_1\\vecadd2d.ir
+KBTabs\2\TabCode=C:\\work\\github\\EE524A\\Homeworks\\Homework1Sessions\\Homework1_1a\\vecadd2d.ir
 KBTabs\2\KBFacadeVisible=true
 KBTabs\2\IsValidation=true
 KBTabs\2\KBServerActive=true
-KBTabs\2\Artifacts="C:\\work\\github\\EE524A\\Homeworks\\Homework1Sessions\\Homework1_1\\vecadd2d.ir;"
-KBTabs\2\Reports=C:\\work\\github\\EE524A\\Homeworks\\Homework1Sessions\\Homework1_1\\LastRunResults/vecadd2d.cbreport
-KBTabs\2\CLFiles=C:\\work\\github\\EE524A\\Homeworks\\Homework1Sessions\\Homework1_1\\vecadd2d.cl
+KBTabs\2\Artifacts="C:\\work\\github\\EE524A\\Homeworks\\Homework1Sessions\\Homework1_1a\\vecadd2d.ir;"
+KBTabs\2\Reports=C:\\work\\github\\EE524A\\Homeworks\\Homework1Sessions\\Homework1_1a\\LastRunResults/vecadd2d.cbreport
+KBTabs\2\CLFiles=C:\\work\\github\\EE524A\\Homeworks\\Homework1Sessions\\Homework1_1a\\vecadd2d.cl
 KBTabs\2\IsBinary=false
 KBTabs\2\TabOpt6=
 KBTabs\2\TabOpt7=2

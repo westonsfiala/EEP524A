@@ -12,8 +12,10 @@
 
 inline char* read_source(/* input */ const char *file_name, /* output */ size_t* file_size)
 {
-    auto file = fopen(file_name, "rb");
-	if (!file) {
+    FILE* file = nullptr;
+    const auto success = fopen_s(&file, file_name, "rb");
+    assert(success == 0);
+	if (!file || success != 0) {
 		printf("Error: Failed to open file '%s'\n", file_name);
 		return NULL;
 	}
@@ -41,7 +43,7 @@ inline char* read_source(/* input */ const char *file_name, /* output */ size_t*
 		fclose(file);
 		return NULL;
 	}
-	printf("Reading file '%s' (size %ld bytes)\n", file_name, size);
+	printf("Reading file '%s' (size %ld bytes)\n", file_name, static_cast<long>(size));
 
 	size_t res = fread(src, 1, sizeof(char) * size, file);
 	if (res != sizeof(char) * size)

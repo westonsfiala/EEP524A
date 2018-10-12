@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!--  Kernel Builder Variables Database  -->
+<KernelBuilderBuffers>
+    <BufferDetails>
+        <Name>input_buffer</Name>
+        <DataType>float</DataType>
+        <MemoryFlags>CL_MEM_USE_HOST_PTR</MemoryFlags>
+        <AccessQualifier>READ_ONLY</AccessQualifier>
+        <I_O_Mode>0</I_O_Mode>
+        <Source>C:\work\GitHub\EEP524A\Lectures\Lecture3\inclaseExersise1\bin_input_buffer.bin</Source>
+        <ReadOutput>true</ReadOutput>
+        <BufferSize>262144</BufferSize>
+        <InitByRandom>true</InitByRandom>
+        <InitByZero>false</InitByZero>
+        <UseAsSVM>false</UseAsSVM>
+    </BufferDetails>
+    <BufferDetails>
+        <Name>output_buffer</Name>
+        <DataType>float</DataType>
+        <MemoryFlags>CL_MEM_USE_HOST_PTR</MemoryFlags>
+        <AccessQualifier>READ_ONLY</AccessQualifier>
+        <I_O_Mode>1</I_O_Mode>
+        <Source></Source>
+        <ReadOutput>true</ReadOutput>
+        <BufferSize>262144</BufferSize>
+        <InitByRandom>false</InitByRandom>
+        <InitByZero>false</InitByZero>
+        <UseAsSVM>false</UseAsSVM>
+    </BufferDetails>
+</KernelBuilderBuffers>
+
+<KernelBuilderImages/>
+
+<KernelBuilderSamplers/>
+
+<KernelBuilderPipes/>

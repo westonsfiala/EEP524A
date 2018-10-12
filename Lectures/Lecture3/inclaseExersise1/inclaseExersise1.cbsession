@@ -1,0 +1,42 @@
+[General]
+ActiveTab=inclaseExersise1
+
+[KBSession]
+KBTabs\2\TabFile=inclaseExersise1
+KBTabs\2\TabName=inclaseExersise1
+KBTabs\2\KBCache="&mmul_v1$N;A;B;C$int;float*;float*;float*$__private;__global;__global;__global$NONE;NONE;NONE;NONE#mmul_v2$N;A;B;C$int;float*;float*;float*$__private;__global;__global;__global$NONE;NONE;NONE;NONE"
+KBTabs\2\KBVarsByKernel="mmul_v1#N&3&512;A&0&input_buffer;B&0&input_buffer;C&0&output_buffer^mmul_v2#N&&;A&&;B&&;C&&"
+KBTabs\2\KBRefsByKernel="mmul_v1#N&;A&;B&;C&^mmul_v2#N&;A&;B&;C&"
+KBTabs\2\KBGroupSizes=512#512#0#Auto#Auto#Auto$0#0#0#0#0#0
+KBTabs\2\KBIterations=25#1
+KBTabs\2\KBConfigurationNames=config_0$config_0
+KBTabs\2\KBWorkFlows=
+KBTabs\2\KBWorkFlowsSetting=
+KBTabs\2\KBExternalBinaries=
+KBTabs\2\KBSelectedKernel=mmul_v1
+KBTabs\2\TabCode=C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture3\\inclaseExersise1\\program.ir
+KBTabs\2\KBFacadeVisible=true
+KBTabs\2\IsValidation=false
+KBTabs\2\KBServerActive=true
+KBTabs\2\Artifacts="C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture3\\inclaseExersise1\\program.ir;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture3\\inclaseExersise1\\program.asm;"
+KBTabs\2\Reports="C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture3\\inclaseExersise1\\LastRunResults/mmul_v1.cbreport;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture3\\inclaseExersise1\\LastRunResults/mmul_v1.cbreport;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture3\\inclaseExersise1\\LastRunResults/mmul_v1.cbreport;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture3\\inclaseExersise1\\LastRunResults/mmul_v1.cbreport;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture3\\inclaseExersise1\\LastRunResults/mmul_v1.cbreport;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture3\\inclaseExersise1\\LastRunResults/mmul_v1.cbreport"
+KBTabs\2\CLFiles=C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture3\\inclaseExersise1\\program.cl
+KBTabs\2\IsBinary=false
+KBTabs\2\TabOpt6="-cl-std=CL2.0"
+KBTabs\2\TabOpt7=2
+KBTabs\2\TabOpt10=(local) LAPTOP-MC018RMV
+KBTabs\2\TabOpt17=Intel(R) OpenCL
+KBTabs\2\TabOpt18=CPU: Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz
+KBTabs\2\TabOpt1=true
+KBTabs\2\TabOpt3=false
+KBTabs\2\TabOpt9=Current Operating System
+KBTabs\2\TabOpt11=
+KBTabs\2\TabOpt4=false
+KBTabs\2\TabOpt13=5010
+KBTabs\2\TabOpt14=5999
+KBTabs\2\TabOpt15=true
+KBTabs\2\TabOpt16=20000
+KBTabs\2\TabOpt2=-asm$
+KBTabs\2\TabOpt19=
+KBTabs\2\TabOpt20=
+KBTabs\size=2

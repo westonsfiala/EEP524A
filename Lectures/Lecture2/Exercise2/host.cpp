@@ -2,9 +2,10 @@
 #include "CL/cl.h"
 #include <cstdio>
 #include <cstdlib>
-#include <assert.h>
+#include <cassert>
 #include <string>
 #include <vector>
+#include <thread>
 
 #include "read_source.h"
 
@@ -29,11 +30,11 @@ bool verifyResults(const float* input_pointer, const float* output_pointer, cons
 
     if(success)
     {
-        printf("Verification Success");
+        printf("Verification Success\n");
     }
     else
     {
-        printf("Verification Fail");
+        printf("Verification Fail\n");
     }
     return success;
 }
@@ -65,6 +66,7 @@ int main(int argc, char** argv)
     );
     assert(success == CL_SUCCESS);
 
+    cl_platform_id chosen_platform = nullptr;
     cl_device_id* chosen_devices = nullptr;
     cl_uint num_chosen_devices = -1;
 
@@ -248,14 +250,17 @@ int main(int argc, char** argv)
             printf("\n");
 
             // Select the platform & device that we are using by assigning it here.
+            chosen_platform = platforms[platform_index];
             chosen_devices = devices;
             num_chosen_devices = num_devices;
         }
     }
 
+    cl_context_properties properties[3] = { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(chosen_platform), 0 };
+
     // Create the context for our run.
     const auto chosen_context = clCreateContext(
-        nullptr,
+        properties,
         num_chosen_devices,
         chosen_devices,
         nullptr,
@@ -325,7 +330,7 @@ int main(int argc, char** argv)
     // Initialize the inputs to linearly increasing index.
     for(auto i = 0; i < num_values; ++i)
     {
-        static_cast<float*>(chosen_input_pointer)[i] = i;
+        static_cast<float*>(chosen_input_pointer)[i] = static_cast<float>(i);
     }
 
     // Create the memory buffers
@@ -440,6 +445,9 @@ int main(int argc, char** argv)
     {
         free(malloced_pointer);
     }
+
+    printf("\nsleeping for 5 seconds\n");
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     return 0;
 }

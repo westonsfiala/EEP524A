@@ -2,16 +2,19 @@
 #include "CL/cl.h"
 #include <cstdio>
 #include <cstdlib>
-#include <cassert>
+#include <assert.h>
 #include <string>
 #include <vector>
 
-#include "output_global_id.h"
+#include "read_source.h"
 
 const static std::string platform_name_to_use = "Intel(R) OpenCL";
 const static std::string device_name_to_use = "Intel(R) UHD Graphics 620";
 
-bool verifyResults(const float* output_pointer, const int num_values)
+const static std::string program_file_name = "C:/work/GitHub/EEP524A/Lectures/Lecture2/Exercise2/vecadd_anyD.cl";
+const static std::string program_kernel_name = "vecadd_anyD";
+
+bool verifyResults(const float* input_pointer, const float* output_pointer, const int num_values)
 {
     assert(num_values > 0);
 
@@ -19,10 +22,19 @@ bool verifyResults(const float* output_pointer, const int num_values)
 
     for (auto i = 0; i < num_values; ++i)
     {
-        const auto outputVal = output_pointer[i];
-        success &= outputVal == i;
+        const auto input_val = input_pointer[i];
+        const auto output_val = output_pointer[i];
+        success &= output_val == input_val*2;
     }
 
+    if(success)
+    {
+        printf("Verification Success");
+    }
+    else
+    {
+        printf("Verification Fail");
+    }
     return success;
 }
 
@@ -253,9 +265,19 @@ int main(int argc, char** argv)
     assert(success == CL_SUCCESS);
 
     // Read in the source file
-    const char* strings[] = {output_global_id.c_str()};
+    //const char* strings[] = {output_global_id.c_str()};
 
-    const size_t kernel_char_size = output_global_id.size();
+    //const size_t kernel_char_size = output_global_id.size();
+
+    size_t kernel_char_size;
+
+    const auto program_string = read_source( program_file_name.c_str() , &kernel_char_size );
+
+    assert(program_string);
+
+    std::string check_string = program_string;
+
+    const char* strings[] = { program_string };
 
     // Create the program
     const auto chosen_program = clCreateProgramWithSource(
@@ -290,38 +312,76 @@ int main(int argc, char** argv)
     // Create the Kernel
     const auto chosen_kernel = clCreateKernel(
         chosen_program,
-        output_global_id_kernel_name.c_str(),
+        program_kernel_name.c_str(),
+        &success
+    );
+    assert(success == CL_SUCCESS);
+
+    // Allocate memory for the input.
+    const auto num_values = 4096;
+    const size_t chosen_memory_size = sizeof(float) * num_values;
+    void* chosen_input_pointer = _aligned_malloc(sizeof(float) * chosen_memory_size, num_values);
+
+    // Initialize the inputs to linearly increasing index.
+    for(auto i = 0; i < num_values; ++i)
+    {
+        static_cast<float*>(chosen_input_pointer)[i] = i;
+    }
+
+    // Create the memory buffers
+    auto chosen_input_buffer = clCreateBuffer(
+        chosen_context,
+        CL_MEM_USE_HOST_PTR,
+        chosen_memory_size,
+        chosen_input_pointer,
         &success
     );
     assert(success == CL_SUCCESS);
 
     // Allocate memory for the output.
-    const auto chosen_alignment = 4096;
-    const size_t chosen_pointer_size = sizeof(float) * chosen_alignment;
-    void* chosen_output_pointer = _aligned_malloc(sizeof(float) * chosen_alignment, chosen_alignment);
+    void* chosen_output_pointer = _aligned_malloc(sizeof(float) * chosen_memory_size, num_values);
 
     // Create the memory buffers
-    auto chosen_buffer = clCreateBuffer(
+    auto chosen_output_buffer = clCreateBuffer(
         chosen_context,
         CL_MEM_USE_HOST_PTR,
-        chosen_pointer_size,
+        chosen_memory_size,
         chosen_output_pointer,
         &success
     );
     assert(success == CL_SUCCESS);
 
     // Set the kernel arguments
+    // Input A
     success = clSetKernelArg(
         chosen_kernel,
         0,
-        sizeof(chosen_buffer),
-        &chosen_buffer
+        sizeof(chosen_input_buffer),
+        &chosen_input_buffer
+    );
+    assert(success == CL_SUCCESS);
+
+    // Input B
+    success = clSetKernelArg(
+        chosen_kernel,
+        1,
+        sizeof(chosen_input_buffer),
+        &chosen_input_buffer
+    );
+    assert(success == CL_SUCCESS);
+
+    // Output
+    success = clSetKernelArg(
+        chosen_kernel,
+        2,
+        sizeof(chosen_output_buffer),
+        &chosen_output_buffer
     );
     assert(success == CL_SUCCESS);
 
     // Enque the kernel
     size_t global_work_offset[] = {0, 0, 0};
-    size_t global_work_size[] = {chosen_alignment, 0, 0};
+    size_t global_work_size[] = {num_values, 0, 0};
     size_t local_work_size[] = {256, 256, 256};
 
     success = clEnqueueNDRangeKernel(
@@ -344,11 +404,11 @@ int main(int argc, char** argv)
     // Read back the data that we processed
     const auto chosen_kernel_output = clEnqueueMapBuffer(
         chosen_command_queue,
-        chosen_buffer,
+        chosen_output_buffer,
         true,
         CL_MAP_READ,
         0,
-        chosen_pointer_size,
+        chosen_memory_size,
         0,
         nullptr,
         nullptr,
@@ -356,10 +416,10 @@ int main(int argc, char** argv)
     );
     assert(success == CL_SUCCESS);
 
-    // Free the memory that we mapped before
+    // Free the memory that we mapped before - Output
     success = clEnqueueUnmapMemObject(
         chosen_command_queue,
-        chosen_buffer,
+        chosen_output_buffer,
         chosen_output_pointer,
         0,
         nullptr,
@@ -368,10 +428,11 @@ int main(int argc, char** argv)
     assert(success == CL_SUCCESS);
 
     // Verify our relults
-    success = verifyResults(static_cast<float*>(chosen_kernel_output), chosen_alignment);
+    success = verifyResults(static_cast<float*>(chosen_input_pointer), static_cast<float*>(chosen_kernel_output), num_values);
     assert(success);
 
     // Free up the aligned memory.
+    _aligned_free(chosen_input_pointer);
     _aligned_free(chosen_output_pointer);
 
     // Free up any pointers that we malloced earlier.

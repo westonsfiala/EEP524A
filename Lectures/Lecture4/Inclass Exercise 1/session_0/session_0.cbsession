@@ -1,0 +1,42 @@
+[General]
+ActiveTab=session_0
+
+[KBSession]
+KBTabs\2\TabFile=session_0
+KBTabs\2\TabName=session_0
+KBTabs\2\KBCache="&mmul_opt2$N;A;B;C$int;float*;float*;float*$__private;__global;__global;__global$NONE;NONE;NONE;NONE#mmul_opt3$N;A;B;C$int;float*;float*;float*$__private;__global;__global;__global$NONE;NONE;NONE;NONE"
+KBTabs\2\KBVarsByKernel="mmul_opt2#N&3&512;A&0&input_buffer_512;B&0&input_buffer_512;C&0&output_buffer_512^mmul_opt3#N&3&512;A&0&input_buffer_512;B&0&input_buffer_512;C&0&output_buffer_512"
+KBTabs\2\KBRefsByKernel="mmul_opt2#N&;A&;B&;C&C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\bin_ref_output_buffer_5120.bin^mmul_opt3#N&;A&;B&;C&C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\bin_ref_output_buffer_5120.bin"
+KBTabs\2\KBGroupSizes=512#0#0#0#0#0$512#0#0#Auto#0#0
+KBTabs\2\KBIterations=1#100
+KBTabs\2\KBConfigurationNames=config_0$config_0
+KBTabs\2\KBWorkFlows=
+KBTabs\2\KBWorkFlowsSetting=
+KBTabs\2\KBExternalBinaries=
+KBTabs\2\KBSelectedKernel=mmul_opt3
+KBTabs\2\TabCode=C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\program.ir
+KBTabs\2\KBFacadeVisible=true
+KBTabs\2\IsValidation=true
+KBTabs\2\KBServerActive=true
+KBTabs\2\Artifacts="C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\program.ir;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\program_mmul_opt2.gen;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\program_mmul_opt3.gen;"
+KBTabs\2\Reports="C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\LastRunResults/mmul_opt2.cbreport;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\LastRunResults/mmul_opt2.cbreport;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\LastRunResults/mmul_opt3.cbreport;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\LastRunResults/mmul_opt3.cbreport;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\LastRunResults/mmul_opt3.cbreport;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\LastRunResults/mmul_opt3.cbreport"
+KBTabs\2\CLFiles=C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture4\\Inclass Exercise 1\\session_0\\program.cl
+KBTabs\2\IsBinary=false
+KBTabs\2\TabOpt6="-cl-std=CL2.0"
+KBTabs\2\TabOpt7=2
+KBTabs\2\TabOpt10=(local) LAPTOP-MC018RMV
+KBTabs\2\TabOpt17=Intel(R) OpenCL
+KBTabs\2\TabOpt18=GPU: Intel(R) UHD Graphics 620
+KBTabs\2\TabOpt1=true
+KBTabs\2\TabOpt3=false
+KBTabs\2\TabOpt9=Current Operating System
+KBTabs\2\TabOpt11=
+KBTabs\2\TabOpt4=false
+KBTabs\2\TabOpt13=5010
+KBTabs\2\TabOpt14=5999
+KBTabs\2\TabOpt15=true
+KBTabs\2\TabOpt16=20000
+KBTabs\2\TabOpt2=-asm$
+KBTabs\2\TabOpt19=
+KBTabs\2\TabOpt20=
+KBTabs\size=2

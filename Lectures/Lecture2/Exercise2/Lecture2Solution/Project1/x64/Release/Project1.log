@@ -1,0 +1,25 @@
+﻿Build started 10/18/2018 8:11:10 PM.
+     1>Project "C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\Project1\Project1.vcxproj" on node 2 (Build target(s)).
+     1>InitializeBuildStatus:
+         Creating "x64\Release\Project1.tlog\unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.12.25827\bin\HostX86\x64\CL.exe /c /Zi /nologo /W3 /WX- /diagnostics:classic /sdl /O2 /Oi /GL /D _MBCS /Gm- /EHsc /MD /GS /Gy /fp:precise /permissive- /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"x64\Release\\" /Fd"x64\Release\vc141.pdb" /Gd /TP /errorReport:prompt Source.cpp
+         Source.cpp
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.12.25827\bin\HostX86\x64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\x64\Release\Project1.exe" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG:FULL /PDB:"C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\x64\Release\Project1.pdb" /OPT:REF /OPT:ICF /LTCG:incremental /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\x64\Release\Project1.lib" /MACHINE:X64 x64\Release\Source.obj
+         Generating code
+         3 of 281 functions ( 1.1%) were compiled, the rest were copied from previous compilation.
+           0 functions were new in current compilation
+           0 functions had inline decision re-evaluated but remain unchanged
+         Finished generating code
+         Project1.vcxproj -> C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\x64\Release\Project1.exe
+       FinalizeBuildStatus:
+         Deleting file "x64\Release\Project1.tlog\unsuccessfulbuild".
+         Touching "x64\Release\Project1.tlog\Project1.lastbuildstate".
+     1>Done Building Project "C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\Project1\Project1.vcxproj" (Build target(s)).
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.61

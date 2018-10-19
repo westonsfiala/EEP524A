@@ -1,10 +1,10 @@
-﻿Build started 10/11/2018 6:31:15 PM.
+﻿Build started 10/18/2018 7:30:32 PM.
      1>Project "C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\Lecture2Project\Lecture2Project.vcxproj" on node 2 (Build target(s)).
      1>InitializeBuildStatus:
          Creating "x64\Debug\Lecture2Project.tlog\unsuccessfulbuild" because "AlwaysCreate" was specified.
        _Intel_OpenCL_Build_Rules:
          Preprocessing: vecadd_anyD.cl
-         cmd.exe /Q /C "C:\Users\westo\AppData\Local\Temp\tmpe536ca9ca6104aa285f0c15ef25d3ef6.cmd"
+         cmd.exe /Q /C "C:\Users\westo\AppData\Local\Temp\tmp1fa85f083a664a0c946bd24dce2025be.cmd"
          "C:\Intel\OpenCL\sdk\bin\x64\ioc64.exe" -cmd=build -input="C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\vecadd_anyD.cl" -output="x64\Debug\vecadd_anyD.out" -VS -device=CPU -simd=default -targetos=current            -bo="           "
          Ignoring -TARGETOS option - not supported for 64-bit version of this tool
          Setting target instruction set architecture to: Default (Advanced Vector Extension 2 (AVX2))
@@ -31,10 +31,9 @@
          Build succeeded!
          
        ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.12.25827\bin\HostX86\x64\CL.exe /c /IC:\Intel\OpenCL\sdk\include /Zi /nologo /W3 /WX- /diagnostics:classic /Od /D __x86_64 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"x64\Debug\\" /Fd"x64\Debug\vc141.pdb" /Gd /TP /errorReport:prompt ..\..\host.cpp
-         host.cpp
+         All outputs are up-to-date.
        Link:
-         C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.12.25827\bin\HostX86\x64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\x64\Debug\Lecture2Project.exe" /INCREMENTAL /NOLOGO /LIBPATH:C:\Intel\OpenCL\sdk\lib\x64 OpenCL.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG:FASTLINK /PDB:"C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\x64\Debug\Lecture2Project.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\x64\Debug\Lecture2Project.lib" /MACHINE:X64 x64\Debug\host.obj
+         All outputs are up-to-date.
          Lecture2Project.vcxproj -> C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\x64\Debug\Lecture2Project.exe
        PostBuildEvent:
          If exist "*.cl" copy "*.cl" "C:\work\GitHub\EEP524A\Lectures\Lecture2\Exercise2\Lecture2Solution\x64\Debug\\"
@@ -48,4 +47,4 @@ Build succeeded.
     0 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:00:03.78
+Time Elapsed 00:00:01.71

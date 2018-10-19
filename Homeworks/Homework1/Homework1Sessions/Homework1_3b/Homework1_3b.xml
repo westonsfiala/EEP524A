@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!--  Kernel Builder Variables Database  -->
+<KernelBuilderBuffers>
+    <BufferDetails>
+        <Name>input_buffer_a</Name>
+        <DataType>int4</DataType>
+        <MemoryFlags>CL_MEM_USE_HOST_PTR</MemoryFlags>
+        <AccessQualifier>READ_ONLY</AccessQualifier>
+        <I_O_Mode>0</I_O_Mode>
+        <Source>C:\work\github\EE524A\Homeworks\Homework1Sessions\Homework1_3b\bin_input_buffer_a.bin</Source>
+        <ReadOutput>true</ReadOutput>
+        <BufferSize>8</BufferSize>
+        <InitByRandom>false</InitByRandom>
+        <InitByZero>false</InitByZero>
+        <UseAsSVM>false</UseAsSVM>
+    </BufferDetails>
+    <BufferDetails>
+        <Name>input_buffer_b</Name>
+        <DataType>int4</DataType>
+        <MemoryFlags>CL_MEM_USE_HOST_PTR</MemoryFlags>
+        <AccessQualifier>READ_ONLY</AccessQualifier>
+        <I_O_Mode>0</I_O_Mode>
+        <Source>C:\work\github\EE524A\Homeworks\Homework1Sessions\Homework1_3b\bin_input_buffer_b.bin</Source>
+        <ReadOutput>true</ReadOutput>
+        <BufferSize>8</BufferSize>
+        <InitByRandom>false</InitByRandom>
+        <InitByZero>false</InitByZero>
+        <UseAsSVM>false</UseAsSVM>
+    </BufferDetails>
+    <BufferDetails>
+        <Name>output_buffer</Name>
+        <DataType>int4</DataType>
+        <MemoryFlags>CL_MEM_USE_HOST_PTR</MemoryFlags>
+        <AccessQualifier>READ_ONLY</AccessQualifier>
+        <I_O_Mode>1</I_O_Mode>
+        <Source></Source>
+        <ReadOutput>true</ReadOutput>
+        <BufferSize>8</BufferSize>
+        <InitByRandom>false</InitByRandom>
+        <InitByZero>false</InitByZero>
+        <UseAsSVM>false</UseAsSVM>
+    </BufferDetails>
+</KernelBuilderBuffers>
+
+<KernelBuilderImages/>
+
+<KernelBuilderSamplers/>
+
+<KernelBuilderPipes/>

@@ -1,7 +1,16 @@
-GPU:
-    Best  : 1x64  : 17.96
-    Worst : 1x1   : 572.225
+GPU: V1
+    Best  :   1 x  64 : 17.96
+    Worst :   1 x   1 : 572.225
 
-CPU:
-    Best  : 4x512 : 13.4769
-    Worst : 2x1   : 135.416
+GPU: V2
+    Best  :   1 x 128 : 14.4693
+    Worst :   1 x   1 : 354.022
+
+CPU: V1
+    Best  :   4 x 512 : 13.4769
+    Worst :   2 x   1 : 135.416
+
+CPU: V2 - Unable to run.
+    Best  :
+    Worst :  
+

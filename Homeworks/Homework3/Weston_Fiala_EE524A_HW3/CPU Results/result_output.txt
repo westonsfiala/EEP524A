@@ -1,0 +1,8 @@
+naive_enque: Average = 70.995ms; Standard Deviation = 29.5875
+naive_finish: Average = 18452ms; Standard Deviation = 125.432
+opt1_enque: Average = 68.567ms; Standard Deviation = 28.7732
+opt1_finish: Average = 14223.8ms; Standard Deviation = 152.774
+cl_naive_submit: Average = 18.1748ms; Standard Deviation = 0.0797904
+cl_naive_finish: Average = 17.9692ms; Standard Deviation = 0.0759999
+cl_opt1_submit: Average = 13.96ms; Standard Deviation = 0.0813818
+cl_opt1_finish: Average = 13.7556ms; Standard Deviation = 0.0667779

@@ -12,9 +12,9 @@
 #define DONT_PRINT_CALL_SUCCESSES
 
 const static std::string platform_name_to_use = "Intel(R) OpenCL";
-const static std::string device_name_to_use = "Intel(R) UHD Graphics 620";
+const static std::string device_name_to_use = "Intel(R) HD Graphics 4600";
 
-const static std::string program_file_name = "C:/work/GitHub/EEP524A/Homeworks/Homework3/helloParallelWorld.cl";
+const static std::string program_file_name = "C:/work/github/EE524A/Homeworks/Homework3/helloParallelWorld.cl";
 const static std::string program_kernel_name = "helloParallelWorld";
 
 /**
@@ -680,7 +680,7 @@ int main(int argc, char** argv)
         cl_short s;
         cl_char c;
     };
-
+    
     struct my_struct {
         cl_char my_char;
         cl_char4 my_char4;
@@ -813,8 +813,8 @@ int main(int argc, char** argv)
 
     // Enque the kernel
     size_t global_work_offset[] = {0, 0, 0};
-    size_t global_work_size[] = {5, 5, 0};
-    size_t local_work_size[] = {3, 3, 0};
+    size_t global_work_size[] = {4, 4, 0};
+    size_t local_work_size[] = {2, 2, 0};
 
     success = clEnqueueNDRangeKernel(
         chosen_command_queue,

@@ -4,11 +4,11 @@ union my_union {
     char c;
 };
 
-struct my_struct { 
+typedef struct my_struct { 
     char my_char;
-    char4 my_char4;
+    char4 my_char4 __attribute__ ((packed));
     union my_union u;
-    uint2 my_uint2_vector[4];
+    uint2 my_uint2_vector[4] __attribute__ ((packed));
 };
 
 __kernel void helloParallelWorld(

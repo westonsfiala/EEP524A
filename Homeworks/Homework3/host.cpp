@@ -12,9 +12,10 @@
 #define DONT_PRINT_CALL_SUCCESSES
 
 const static std::string platform_name_to_use = "Intel(R) OpenCL";
-const static std::string device_name_to_use = "Intel(R) HD Graphics 4600";
+const static std::string device_name_to_use = "Intel(R) UHD Graphics 620";
+//const static std::string device_name_to_use = "Intel(R) HD Graphics 4600";
 
-const static std::string program_file_name = "C:/work/github/EE524A/Homeworks/Homework3/helloParallelWorld.cl";
+const static std::string program_file_name = "C:/work/GitHub/EEP524A/Homeworks/Homework3/helloParallelWorld.cl";
 const static std::string program_kernel_name = "helloParallelWorld";
 
 /**

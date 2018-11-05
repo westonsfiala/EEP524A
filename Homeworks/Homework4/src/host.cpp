@@ -351,7 +351,6 @@ int main(int argc, char** argv)
 
     for (cl_uint platform_index = 0; platform_index < num_platforms; platform_index++)
     {
-        bool take_platform = true;
         size_t param_value_size;
 
         // Get the size of the name of the platform.
@@ -395,7 +394,8 @@ int main(int argc, char** argv)
 
         if (platform_name != platform_name_to_use)
         {
-            take_platform = false;
+            printf("Skipping unwanted platform.\n\n");
+            continue;
         }
 
         cl_uint num_devices;
@@ -621,17 +621,15 @@ int main(int argc, char** argv)
             // clean up the output.
             printf("\n");
 
-            if (take_platform)
+            // Select the platform & device that we are using by assigning it here.
+            chosen_platform = platforms[platform_index];
+            chosen_devices = devices;
+            num_chosen_devices = num_devices;
+            // If we have our prefered device, don't keep searching.
+            if (device_taken)
             {
-                // Select the platform & device that we are using by assigning it here.
-                chosen_platform = platforms[platform_index];
-                chosen_devices = devices;
-                num_chosen_devices = num_devices;
-                // If we have our prefered device, don't keep searching.
-                if (device_taken)
-                {
-                    break;
-                }
+                printf("Device Found. Stopping Search.\n");
+                break;
             }
         }
     }
@@ -713,7 +711,7 @@ int main(int argc, char** argv)
                               build_error, nullptr);
 
         std::string error_string = build_error;
-        printf("%s", error_string.c_str());
+        printf("%s\n", error_string.c_str());
 
         free_pointers(malloced_pointers, alligned_malloced_pointers);
         // In debug its nice to hit an assert so that we stop and 

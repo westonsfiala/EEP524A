@@ -38,9 +38,6 @@
     <Intel_OpenCL_Build_Rules Include="..\..\src\Blur_Kernel.cl">
       <Filter>OpenCL Files</Filter>
     </Intel_OpenCL_Build_Rules>
-    <Intel_OpenCL_Build_Rules Include="..\..\src\Rotate_Kernel.cl">
-      <Filter>OpenCL Files</Filter>
-    </Intel_OpenCL_Build_Rules>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\filterCoef_5x5_sigma0.750000.csv">

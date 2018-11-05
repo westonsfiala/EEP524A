@@ -1,9 +1,9 @@
 __kernel void img_conv_filter(
 __read_only image2d_t inputImg, 
 __write_only image2d_t outputImg, 
-sampler_t sampler,
-__global float* filter,
-int filterWidth
+const sampler_t sampler,
+__global const float* filter,
+const int filterWidth
 )
 {
     // use global IDs for output coords

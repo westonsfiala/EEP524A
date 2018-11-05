@@ -15,6 +15,8 @@
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+#include "GenerateCoef.h"
+#include <map>
 
 #define DONT_PRINT_CALL_SUCCESSES
 
@@ -29,15 +31,20 @@ const static std::string prefered_device_name = "Intel(R) UHD Graphics 620";
 static const std::string base_directory = "C:/work/GitHub/EEP524A/Homeworks/Homework4/";
 static const std::string output_directory = base_directory + "Outputs/";
 static const std::string src_directory = base_directory + "src/";
-static const std::string rotate_kernel_file = src_directory + "Rotate_Kernel.cl";
 static const std::string blur_kernel_file = src_directory + "Blur_Kernel.cl";
-static const std::string tiny_lena_file = src_directory + "tiny-Lena_32bit.png";
-static const std::string little_lena_file = src_directory + "little-Lena_24bit.png";
+static const std::string lena_file = src_directory + "tiny-Lena_32bit.png";
+//static const std::string little_lena_file = src_directory + "little-Lena_24bit.png";
 static const std::string normal_lena_file = src_directory + "lena_512x512_32bit.png";
 static const std::string big_lena_file = src_directory + "Big_Gray-Lena_8bit.png";
 
+static const std::vector<std::string> lena_files = { lena_file/*, little_lena_file*/, normal_lena_file, big_lena_file };
+
 const static std::string conv_filter_kernel_name = "img_conv_filter";
-const static std::string rotate_kernel_name = "img_rotate";
+
+const static std::vector<uint32_t> filter_sizes = { 5, 7, 9 };
+const static std::vector<float> filter_sigma2s = { 0.75f, 1.2f };
+
+const static uint32_t kernel_iterations = 500;
 
 // Got from https://stackoverflow.com/questions/33268513/calculating-standard-deviation-variance-in-c
 double Variance(const std::vector<double>& samples)
@@ -76,8 +83,7 @@ double Average(const std::vector<double>& samples)
     return average;
 }
 
-std::pair<double, double> print_results(std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>>& times,
-                                        const std::string& filename)
+std::pair<double, double> print_results(std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>>& times, const std::string& filename)
 {
     std::ofstream myfile;
 
@@ -376,7 +382,7 @@ int main(int argc, char** argv)
         // Get the number of devices
         success = clGetDeviceIDs(
             platforms[platform_index],
-            CL_DEVICE_TYPE_ALL,
+            CL_DEVICE_TYPE_GPU,
             0,
             nullptr,
             &num_devices
@@ -632,29 +638,24 @@ int main(int argc, char** argv)
     }
 
     size_t blur_kernel_char_size;
-    size_t rotate_kernel_char_size;
 
     const auto blur_kernel_string = read_source(blur_kernel_file.c_str(), &blur_kernel_char_size);
-    const auto rotate_kernel_string = read_source(rotate_kernel_file.c_str(), &rotate_kernel_char_size);
 
     std::string check_string1 = blur_kernel_string;
-    std::string check_string2 = rotate_kernel_string;
 
     assert(blur_kernel_string);
-    assert(rotate_kernel_string);
 
     // The strings array is filled with the two null terminated strings.
-    const char* strings[] = {rotate_kernel_string, blur_kernel_string};
+    const char* strings[] = { blur_kernel_string};
     // Because the strings are null terminated, we pass in 0.
-    const size_t lengths[] = {0, 0};
+    const size_t lengths[] = {0};
 
     malloced_pointers.push_back(blur_kernel_string);
-    malloced_pointers.push_back(rotate_kernel_string);
 
     // Create the program
     const auto chosen_program = clCreateProgramWithSource(
         chosen_context,
-        2,
+        1,
         strings,
         lengths,
         &success
@@ -733,726 +734,401 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    // Create the opt1 Kernel
-    const auto revolve_kernel = clCreateKernel(
-        chosen_program,
-        rotate_kernel_name.c_str(),
-        &success
-    );
-    if (!process_cl_call_status("clCreateKernel", success))
+    std::map<std::string, std::pair<double, double>> results_outputs;
+
+    for (const auto &lena_file : lena_files)
     {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
-        // In debug its nice to hit an assert so that we stop and 
-        // can see what are the things that were sent in to break it.
-        assert(false);
-        return -1;
+        for (const auto &filter_size : filter_sizes)
+        {
+            for (const auto &filter_sigma2 : filter_sigma2s)
+            {
+                const cl_mem_flags lena_input_image_flags = CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY;
+                const cl_mem_flags lena_output_image_flags = CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY;
+
+                /*
+                size_t num_supported;
+
+                // Find out what image formats are supported
+                success = clGetSupportedImageFormats(
+                    chosen_context,
+                    lena_output_image_flags,
+                    CL_MEM_OBJECT_IMAGE2D,
+                    0,
+                    nullptr,
+                    &num_supported
+                );
+                if (!process_cl_call_status("clGetSupportedImageFormats", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                cl_image_format* supported_formats = static_cast<cl_image_format*>(malloc(sizeof(cl_image_format) * num_supported));
+                malloced_pointers.push_back(supported_formats);
+
+                // Find out what image formats are supported
+                success = clGetSupportedImageFormats(
+                    chosen_context,
+                    lena_output_image_flags,
+                    CL_MEM_OBJECT_IMAGE2D,
+                    num_supported,
+                    supported_formats,
+                    nullptr
+                );
+                if (!process_cl_call_status("clGetSupportedImageFormats", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                for(uint32_t i = 0; i < num_supported; ++i)
+                {
+                    const auto supported_format = supported_formats[i];
+                    if(supported_format.image_channel_data_type == CL_UNSIGNED_INT8)
+                    {
+                        const auto supported_order = supported_format.image_channel_order;
+                        if(supported_order == CL_RGB)
+                        {
+                            auto blah = 5;
+                        }
+                    }
+                }
+                */
+                
+
+                // Assign variables
+                // Blur Kernel
+
+                // Arg 0 - __read_only image2d_t inputImg
+                int32_t lena_x;
+                int32_t lena_y;
+                int32_t lena_num_channels;
+                const auto lena_data = stbi_load(lena_file.c_str(), &lena_x, &lena_y, &lena_num_channels, 0);
+                assert(lena_data);
+                malloced_pointers.push_back(lena_data);
+
+                cl_image_format lena_image_format;
+                lena_image_format.image_channel_data_type = CL_UNSIGNED_INT8;
+                switch (lena_num_channels)
+                {
+                case 1:
+                    lena_image_format.image_channel_order = CL_R;
+                    break;
+                case 2:
+                    lena_image_format.image_channel_order = CL_RA;
+                    break;
+                case 3:
+                    lena_image_format.image_channel_order = CL_RGB;
+                    break;
+                case 4:
+                    lena_image_format.image_channel_order = CL_RGBA;
+                    break;
+                default:
+                    assert(false);
+                    break;
+                }
+
+                cl_image_desc lena_image_desc;
+                lena_image_desc.image_type = CL_MEM_OBJECT_IMAGE2D;
+                lena_image_desc.image_width = lena_x;
+                lena_image_desc.image_height = lena_y;
+                lena_image_desc.image_depth = 0;
+                lena_image_desc.image_array_size = 0;
+                lena_image_desc.image_row_pitch = 0;
+                lena_image_desc.image_slice_pitch = 0;
+                lena_image_desc.num_mip_levels = 0;
+                lena_image_desc.num_samples = 0;
+                lena_image_desc.mem_object = nullptr;
+
+                auto lena_image_mem = clCreateImage(
+                    chosen_context,
+                    lena_input_image_flags,
+                    &lena_image_format,
+                    &lena_image_desc,
+                    lena_data,
+                    &success
+                );
+                if (!process_cl_call_status("clCreateImage", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                success = clSetKernelArg(
+                    blur_kernel,
+                    0,
+                    sizeof(lena_image_mem),
+                    &lena_image_mem
+                );
+                if (!process_cl_call_status("clSetKernelArg", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                // Arg1 - __write_only image2d_t outputImg,
+                const auto lena_output_data = malloc(sizeof(char) * lena_x * lena_y * lena_num_channels);
+                malloced_pointers.push_back(lena_output_data);
+                assert(lena_data);
+
+                auto lena_output_image_mem = clCreateImage(
+                    chosen_context,
+                    lena_output_image_flags,
+                    &lena_image_format,
+                    &lena_image_desc,
+                    lena_data,
+                    &success
+                );
+                if (!process_cl_call_status("clCreateImage", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                success = clSetKernelArg(
+                    blur_kernel,
+                    1,
+                    sizeof(lena_output_image_mem),
+                    &lena_output_image_mem
+                );
+                if (!process_cl_call_status("clSetKernelArg", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                // Arg2 - sampler_t sampler
+
+                cl_sampler_properties lena_sampler_properties[] = {
+                    CL_SAMPLER_NORMALIZED_COORDS, false,
+                    CL_SAMPLER_ADDRESSING_MODE, CL_ADDRESS_CLAMP,
+                    CL_SAMPLER_FILTER_MODE, CL_FILTER_LINEAR
+                    ,0 };
+
+                auto lena_sampler = clCreateSamplerWithProperties(
+                    chosen_context,
+                    lena_sampler_properties,
+                    &success
+                );
+
+                if (!process_cl_call_status("clCreateSamplerWithProperties", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                success = clSetKernelArg(
+                    blur_kernel,
+                    2,
+                    sizeof(lena_sampler),
+                    &lena_sampler
+                );
+                if (!process_cl_call_status("clSetKernelArg", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                // Arg 3 - __global float* filter
+
+                // Get a vector of all the filter coefs.
+                auto blur_filter = generate_gauss_blur(filter_size, filter_sigma2);
+
+                auto blur_filter_mem = clCreateBuffer(
+                    chosen_context,
+                    CL_MEM_USE_HOST_PTR,
+                    sizeof(float) * blur_filter.size(),
+                    blur_filter.data(),
+                    &success
+                );
+                if (!process_cl_call_status("clCreateBuffer", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                success = clSetKernelArg(
+                    blur_kernel,
+                    3,
+                    sizeof(blur_filter_mem),
+                    &blur_filter_mem
+                );
+                if (!process_cl_call_status("clSetKernelArg", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                // Arg 4 - const int filterWidth
+
+                success = clSetKernelArg(
+                    blur_kernel,
+                    4,
+                    sizeof(filter_size),
+                    &filter_size
+                );
+                if (!process_cl_call_status("clSetKernelArg", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+
+                // Enque the kernel
+                size_t global_work_offset[] = { 0, 0, 0 };
+                size_t global_work_size[] = { lena_x, lena_y, 0 };
+                size_t local_work_size[] = { 1, 1, 0 };
+
+                // Get the maps ready for timing
+                std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lena_time_captures_enque;
+                std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lena_time_captures_finish;
+
+                LARGE_INTEGER start_time, finish_time;
+
+                const auto run_name_base = "Lena_" + std::to_string(lena_x) + "x" + std::to_string(lena_y) + "_filt_" + std::to_string(filter_size) + "_sig2_" + std::to_string(filter_sigma2);
+
+                printf("Starting run timing for %d iterations on %s\n",kernel_iterations, run_name_base.c_str());
+                for (uint32_t i = 0; i < kernel_iterations; ++i)
+                {
+                    // Do the captures for the enque time
+                    QueryPerformanceCounter(&start_time);
+
+                    success = clEnqueueNDRangeKernel(
+                        chosen_command_queue,
+                        blur_kernel,
+                        2,
+                        global_work_offset,
+                        global_work_size,
+                        local_work_size,
+                        0,
+                        nullptr,
+                        nullptr
+                    );
+                    if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
+                    {
+                        free_pointers(malloced_pointers, alligned_malloced_pointers);
+                        // In debug its nice to hit an assert so that we stop and
+                        // can see what are the things that were sent in to break it.
+                        assert(false);
+                        return -1;
+                    }
+
+                    QueryPerformanceCounter(&finish_time);
+
+                    // Wait for the kernel to finish
+                    success = clFinish(chosen_command_queue);
+                    if (!process_cl_call_status("clFinish", success))
+                    {
+                        free_pointers(malloced_pointers, alligned_malloced_pointers);
+                        // In debug its nice to hit an assert so that we stop and
+                        // can see what are the things that were sent in to break it.
+                        assert(false);
+                        return -1;
+                    }
+
+                    lena_time_captures_enque.emplace_back(start_time, finish_time);
+
+                    //Do the captures for the finish time
+                    QueryPerformanceCounter(&start_time);
+
+                    success = clEnqueueNDRangeKernel(
+                        chosen_command_queue,
+                        blur_kernel,
+                        2,
+                        global_work_offset,
+                        global_work_size,
+                        local_work_size,
+                        0,
+                        nullptr,
+                        nullptr
+                    );
+                    if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
+                    {
+                        free_pointers(malloced_pointers, alligned_malloced_pointers);
+                        // In debug its nice to hit an assert so that we stop and
+                        // can see what are the things that were sent in to break it.
+                        assert(false);
+                        return -1;
+                    }
+
+                    //QueryPerformanceCounter(&finish_time);
+
+                    // Wait for the kernel to finish
+                    success = clFinish(chosen_command_queue);
+                    if (!process_cl_call_status("clFinish", success))
+                    {
+                        free_pointers(malloced_pointers, alligned_malloced_pointers);
+                        // In debug its nice to hit an assert so that we stop and
+                        // can see what are the things that were sent in to break it.
+                        assert(false);
+                        return -1;
+                    }
+
+                    QueryPerformanceCounter(&finish_time);
+
+                    lena_time_captures_finish.emplace_back(start_time, finish_time);
+                }
+                printf("finished timing.\nPrinting results\n\n");
+
+                const auto run_name_enque = run_name_base + "_enque_times";
+                const auto run_name_finish = run_name_base + "_finish_times";
+                const auto run_name_results = run_name_base + "_results.txt";
+
+                const auto lena_enque_results = print_results(lena_time_captures_enque, run_name_enque);
+                const auto lena_finish_results = print_results(lena_time_captures_finish, run_name_finish);
+
+                results_outputs[run_name_enque] = lena_enque_results;
+                results_outputs[run_name_finish] = lena_finish_results;
+            }
+        }
     }
 
-    // Assign variables
-    // Blur Kernel
-    const cl_mem_flags lena_input_image_flags = CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY;
-    const cl_mem_flags lena_output_image_flags = CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY;
+    std::ofstream myfile;
 
-    // Arg 0 - __read_only image2d_t inputImg
-    int32_t tiny_lena_x;
-    int32_t tiny_lena_y;
-    int32_t tiny_lena_num_channels;
-    const auto tiny_lena_data = stbi_load(tiny_lena_file.c_str(), &tiny_lena_x, &tiny_lena_y, &tiny_lena_num_channels,
-                                          0);
-    assert(tiny_lena_data);
-    malloced_pointers.push_back(tiny_lena_data);
+    myfile.open(output_directory + "results.txt", std::ios::out);
 
-    cl_image_format tiny_lena_image_format;
-    tiny_lena_image_format.image_channel_data_type = CL_UNSIGNED_INT8;
-    switch (tiny_lena_num_channels)
+    for (const auto &run : results_outputs)
     {
-    case 1:
-        tiny_lena_image_format.image_channel_order = CL_A;
-        break;
-    case 2:
-        tiny_lena_image_format.image_channel_order = CL_RA;
-        break;
-    case 3:
-        tiny_lena_image_format.image_channel_order = CL_RGB;
-        break;
-    case 4:
-        tiny_lena_image_format.image_channel_order = CL_RGBA;
-        break;
-    default:
-        assert(false);
-        break;
+
+        myfile << run.first << ": Average = " << run.second.first << "ms; Standard Deviation = " <<
+            run.second.second << std::endl;
     }
 
-    cl_image_desc tiny_lena_image_desc;
-    tiny_lena_image_desc.image_type = CL_MEM_OBJECT_IMAGE2D;
-    tiny_lena_image_desc.image_width = tiny_lena_x;
-    tiny_lena_image_desc.image_height = tiny_lena_y;
-    tiny_lena_image_desc.image_depth = 0;
-    tiny_lena_image_desc.image_array_size = 0;
-    tiny_lena_image_desc.image_row_pitch = 0;
-    tiny_lena_image_desc.image_slice_pitch = 0;
-    tiny_lena_image_desc.num_mip_levels = 0;
-    tiny_lena_image_desc.num_samples = 0;
-    tiny_lena_image_desc.mem_object = nullptr;
+    myfile.close();
 
-    auto tiny_lena_image_mem = clCreateImage(
-        chosen_context,
-        lena_input_image_flags,
-        &tiny_lena_image_format,
-        &tiny_lena_image_desc,
-        tiny_lena_data,
-        &success
-    );
-    if (!process_cl_call_status("clCreateImage", success))
-    {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
-        // In debug its nice to hit an assert so that we stop and 
-        // can see what are the things that were sent in to break it.
-        assert(false);
-        return -1;
-    }
-
-    success = clSetKernelArg(
-        blur_kernel,
-        0,
-        sizeof(tiny_lena_image_mem),
-        &tiny_lena_image_mem
-    );
-    if (!process_cl_call_status("clSetKernelArg", success))
-    {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
-        // In debug its nice to hit an assert so that we stop and 
-        // can see what are the things that were sent in to break it.
-        assert(false);
-        return -1;
-    }
-
-    // Arg1 - __write_only image2d_t outputImg,
-    const auto tiny_lena_output_data = malloc(sizeof(char) * tiny_lena_x * tiny_lena_y * tiny_lena_num_channels);
-    malloced_pointers.push_back(tiny_lena_output_data);
-    assert(tiny_lena_data);
-
-    auto tiny_lena_output_image_mem = clCreateImage(
-        chosen_context,
-        lena_output_image_flags,
-        &tiny_lena_image_format,
-        &tiny_lena_image_desc,
-        tiny_lena_data,
-        &success
-    );
-    if (!process_cl_call_status("clCreateImage", success))
-    {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
-        // In debug its nice to hit an assert so that we stop and 
-        // can see what are the things that were sent in to break it.
-        assert(false);
-        return -1;
-    }
-
-    success = clSetKernelArg(
-        blur_kernel,
-        1,
-        sizeof(tiny_lena_output_image_mem),
-        &tiny_lena_output_image_mem
-    );
-    if (!process_cl_call_status("clSetKernelArg", success))
-    {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
-        // In debug its nice to hit an assert so that we stop and 
-        // can see what are the things that were sent in to break it.
-        assert(false);
-        return -1;
-    }
-
-    //
-    //    // Arg1 - Matrix A
-    //    const auto num_values = matrix_size * matrix_size;
-    //    const auto num_matrix_bytes = sizeof(cl_float) * num_values;
-    //    auto matrix_a_ptr = static_cast<cl_float*>(_aligned_malloc(num_matrix_bytes, matrix_size));
-    //
-    //    if (matrix_a_ptr)
-    //    {
-    //        alligned_malloced_pointers.push_back(matrix_a_ptr);
-    //    }
-    //
-    //    // Fill up the pointer with useful values
-    //    for (auto i = 0; i < num_values; ++i)
-    //    {
-    //        matrix_a_ptr[i] = static_cast<cl_float>(i);
-    //    }
-    //
-    //    auto matrix_a_buffer = clCreateBuffer(
-    //        chosen_context,
-    //        CL_MEM_USE_HOST_PTR,
-    //        num_matrix_bytes,
-    //        matrix_a_ptr,
-    //        &success
-    //    );
-    //    if (!process_cl_call_status("clCreateBuffer", success))
-    //    {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and 
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //    }
-    //
-    //    success = clSetKernelArg(
-    //        naive_kernel,
-    //        1,
-    //        sizeof(matrix_a_buffer),
-    //        &matrix_a_buffer
-    //    );
-    //    if (!process_cl_call_status("clSetKernelArg", success))
-    //    {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and 
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //    }
-    //
-    //    // Argument 2 - Matrix B
-    //    auto matrix_b_ptr = static_cast<cl_float*>(_aligned_malloc(num_matrix_bytes, matrix_size));
-    //
-    //    if (matrix_b_ptr)
-    //    {
-    //        alligned_malloced_pointers.push_back(matrix_b_ptr);
-    //    }
-    //
-    //    // Fill up the pointer with useful values
-    //    for (auto i = 0; i < num_values; ++i)
-    //    {
-    //        matrix_b_ptr[i] = static_cast<cl_float>(num_values - i);
-    //    }
-    //
-    //    auto matrix_b_buffer = clCreateBuffer(
-    //        chosen_context,
-    //        CL_MEM_USE_HOST_PTR,
-    //        num_matrix_bytes,
-    //        matrix_b_ptr,
-    //        &success
-    //    );
-    //    if (!process_cl_call_status("clCreateBuffer", success))
-    //    {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and 
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //    }
-    //
-    //    success = clSetKernelArg(
-    //        naive_kernel,
-    //        2,
-    //        sizeof(matrix_b_buffer),
-    //        &matrix_b_buffer
-    //    );
-    //    if (!process_cl_call_status("clSetKernelArg", success))
-    //    {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and 
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //    }
-    //
-    //    // Argument 3 - Matrix output C
-    //    auto matrix_c_ptr = _aligned_malloc(num_matrix_bytes, matrix_size);
-    //
-    //    if (matrix_c_ptr)
-    //    {
-    //        alligned_malloced_pointers.push_back(matrix_c_ptr);
-    //    }
-    //
-    //    // Create the memory buffers
-    //    auto matrix_c_buffer = clCreateBuffer(
-    //        chosen_context,
-    //        CL_MEM_USE_HOST_PTR,
-    //        num_matrix_bytes,
-    //        matrix_c_ptr,
-    //        &success
-    //    );
-    //    if (!process_cl_call_status("clCreateBuffer", success))
-    //    {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and 
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //    }
-    //
-    //    // Set the kernel arguments
-    //    // Input A
-    //    success = clSetKernelArg(
-    //        naive_kernel,
-    //        3,
-    //        sizeof(matrix_c_buffer),
-    //        &matrix_c_buffer
-    //    );
-    //    if (!process_cl_call_status("clSetKernelArg", success))
-    //    {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and 
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //    }
-    //
-    //    // Set Arguments for the opt1 kernel
-    //    success = clSetKernelArg(
-    //        opt1_kernel,
-    //        0,
-    //        sizeof(arg0),
-    //        &arg0
-    //    );
-    //    if (!process_cl_call_status("clSetKernelArg", success))
-    //    {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and 
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //    }
-    //
-    //    // Arg1 - Matrix A
-    //
-    //    success = clSetKernelArg(
-    //        opt1_kernel,
-    //        1,
-    //        sizeof(matrix_a_buffer),
-    //        &matrix_a_buffer
-    //    );
-    //    if (!process_cl_call_status("clSetKernelArg", success))
-    //    {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and 
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //    }
-    //
-    //    // Argument 2 - Matrix B
-    //
-    //    success = clSetKernelArg(
-    //        opt1_kernel,
-    //        2,
-    //        sizeof(matrix_b_buffer),
-    //        &matrix_b_buffer
-    //    );
-    //    if (!process_cl_call_status("clSetKernelArg", success))
-    //    {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and 
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //    }
-    //
-    //    // Argument 3 - Matrix output C
-    //
-    //    // Set the kernel arguments
-    //    // Input A
-    //    success = clSetKernelArg(
-    //        opt1_kernel,
-    //        3,
-    //        sizeof(matrix_c_buffer),
-    //        &matrix_c_buffer
-    //    );
-    //    if (!process_cl_call_status("clSetKernelArg", success))
-    //    {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and 
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //    }
-    //
-    //    // Enque the kernel
-    //    size_t global_work_offset[] = {0, 0, 0};
-    //    size_t global_work_size[] = {512, 512, 0};
-    //    size_t local_work_size[] = {1, 64, 0};
-    //
-    //    std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> naive_time_captures_enque;
-    //    std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> naive_time_captures_finish;
-    //    std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> opt1_time_captures_enque;
-    //    std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> opt1_time_captures_finish;
-    //
-    //    std::vector<std::pair<cl_ulong, cl_ulong>> cl_naive_time_captures_submit;
-    //    std::vector<std::pair<cl_ulong, cl_ulong>> cl_naive_time_captures_finish;
-    //    std::vector<std::pair<cl_ulong, cl_ulong>> cl_opt1_time_captures_submit;
-    //    std::vector<std::pair<cl_ulong, cl_ulong>> cl_opt1_time_captures_finish;
-    //
-    //    LARGE_INTEGER start_time, finish_time;
-    //    cl_ulong cl_submit_time, cl_start_time, cl_finish_time;
-    //
-    //    printf("Starting naive enque\n");
-    //    for (auto i = 0; i < 500; ++i)
-    //    {
-    //        // Captures for the naive enque time stamps.
-    //        QueryPerformanceCounter(&start_time);
-    //
-    //        success = clEnqueueNDRangeKernel(
-    //            chosen_command_queue,
-    //            naive_kernel,
-    //            2,
-    //            global_work_offset,
-    //            global_work_size,
-    //            local_work_size,
-    //            0,
-    //            nullptr,
-    //            nullptr
-    //        );
-    //        /*
-    //        if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
-    //        {
-    //            free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //            // In debug its nice to hit an assert so that we stop and
-    //            // can see what are the things that were sent in to break it.
-    //            assert(false);
-    //            return -1;
-    //        }
-    //        */
-    //
-    //        QueryPerformanceCounter(&finish_time);
-    //
-    //        // Wait for the kernel to finish
-    //        success = clFinish(chosen_command_queue);
-    //        /*
-    //        if (!process_cl_call_status("clFinish", success))
-    //        {
-    //            free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //            // In debug its nice to hit an assert so that we stop and
-    //            // can see what are the things that were sent in to break it.
-    //            assert(false);
-    //            return -1;
-    //        }
-    //        */
-    //
-    //        //QueryPerformanceCounter(&finish_time);
-    //
-    //        naive_time_captures_enque.emplace_back(start_time, finish_time);
-    //    }
-    //
-    //    printf("Starting naive finish\n");
-    //    for (int i = 0; i < 500; ++i)
-    //    {
-    //        // Captures for the naive finsh time stamps.
-    //        QueryPerformanceCounter(&start_time);
-    //
-    //        success = clEnqueueNDRangeKernel(
-    //            chosen_command_queue,
-    //            naive_kernel,
-    //            2,
-    //            global_work_offset,
-    //            global_work_size,
-    //            local_work_size,
-    //            0,
-    //            nullptr,
-    //            nullptr
-    //        );
-    //        /*
-    //        if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
-    //        {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //        }
-    //        */
-    //
-    //        //QueryPerformanceCounter(&finish_time);
-    //
-    //        // Wait for the kernel to finish
-    //        success = clFinish(chosen_command_queue);
-    //        /*
-    //        if (!process_cl_call_status("clFinish", success))
-    //        {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //        }
-    //        */
-    //
-    //        QueryPerformanceCounter(&finish_time);
-    //
-    //        naive_time_captures_finish.emplace_back(start_time, finish_time);
-    //    }
-    //
-    //    printf("Starting naive submit & finish cl\n");
-    //    for (auto i = 0; i < 500; ++i)
-    //    {
-    //        // Captures for the naive enque time stamps.
-    //        cl_event capture_event;
-    //        success = clEnqueueNDRangeKernel(
-    //            chosen_command_queue,
-    //            naive_kernel,
-    //            2,
-    //            global_work_offset,
-    //            global_work_size,
-    //            local_work_size,
-    //            0,
-    //            nullptr,
-    //            &capture_event
-    //        );
-    //        /*
-    //        if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
-    //        {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //        }
-    //        */
-    //
-    //        // Wait for the kernel to finish
-    //        success = clFinish(chosen_command_queue);
-    //        /*
-    //        if (!process_cl_call_status("clFinish", success))
-    //        {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //        }
-    //        */
-    //
-    //
-    //        clGetEventProfilingInfo(
-    //            capture_event,
-    //            CL_PROFILING_COMMAND_SUBMIT,
-    //            sizeof(cl_ulong),
-    //            &cl_submit_time,
-    //            nullptr
-    //        );
-    //
-    //        clGetEventProfilingInfo(
-    //            capture_event,
-    //            CL_PROFILING_COMMAND_START,
-    //            sizeof(cl_ulong),
-    //            &cl_start_time,
-    //            nullptr
-    //        );
-    //
-    //        clGetEventProfilingInfo(
-    //            capture_event,
-    //            CL_PROFILING_COMMAND_END,
-    //            sizeof(cl_ulong),
-    //            &cl_finish_time,
-    //            nullptr
-    //        );
-    //
-    //        cl_naive_time_captures_submit.emplace_back(cl_submit_time, cl_finish_time);
-    //        cl_naive_time_captures_finish.emplace_back(cl_start_time, cl_finish_time);
-    //    }
-    //
-    //    printf("Starting opt1 enque\n");
-    //    for (int i = 0; i < 500; ++i)
-    //    {
-    //        // Captures for the opt1 enque time stamps
-    //        QueryPerformanceCounter(&start_time);
-    //
-    //        success = clEnqueueNDRangeKernel(
-    //            chosen_command_queue,
-    //            opt1_kernel,
-    //            2,
-    //            global_work_offset,
-    //            global_work_size,
-    //            local_work_size,
-    //            0,
-    //            nullptr,
-    //            nullptr
-    //        );
-    //        /*
-    //        if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
-    //        {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //        }
-    //        */
-    //
-    //        QueryPerformanceCounter(&finish_time);
-    //
-    //        // Wait for the kernel to finish
-    //        success = clFinish(chosen_command_queue);
-    //        /*
-    //        if (!process_cl_call_status("clFinish", success))
-    //        {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //        }
-    //        */
-    //
-    //        //QueryPerformanceCounter(&finish_time);
-    //
-    //        opt1_time_captures_enque.emplace_back(start_time, finish_time);
-    //    }
-    //
-    //    printf("Starting opt1 finish\n");
-    //    for (int i = 0; i < 500; ++i)
-    //    {
-    //        // Captures for the opt1 finish time stamps
-    //        QueryPerformanceCounter(&start_time);
-    //
-    //        success = clEnqueueNDRangeKernel(
-    //            chosen_command_queue,
-    //            opt1_kernel,
-    //            2,
-    //            global_work_offset,
-    //            global_work_size,
-    //            local_work_size,
-    //            0,
-    //            nullptr,
-    //            nullptr
-    //        );
-    //        /*
-    //        if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
-    //        {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //        }
-    //        */
-    //
-    //        //QueryPerformanceCounter(&finish_time);
-    //
-    //        // Wait for the kernel to finish
-    //        success = clFinish(chosen_command_queue);
-    //        /*
-    //        if (!process_cl_call_status("clFinish", success))
-    //        {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //        }
-    //        */
-    //
-    //        QueryPerformanceCounter(&finish_time);
-    //
-    //        opt1_time_captures_finish.emplace_back(start_time, finish_time);
-    //    }
-    //
-    //    printf("Starting opt1 submit & finish cl\n");
-    //    for (auto i = 0; i < 500; ++i)
-    //    {
-    //        // Captures for the naive enque time stamps.
-    //        cl_event capture_event;
-    //        success = clEnqueueNDRangeKernel(
-    //            chosen_command_queue,
-    //            opt1_kernel,
-    //            2,
-    //            global_work_offset,
-    //            global_work_size,
-    //            local_work_size,
-    //            0,
-    //            nullptr,
-    //            &capture_event
-    //        );
-    //        /*
-    //        if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
-    //        {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //        }
-    //        */
-    //
-    //        // Wait for the kernel to finish
-    //        success = clFinish(chosen_command_queue);
-    //        /*
-    //        if (!process_cl_call_status("clFinish", success))
-    //        {
-    //        free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //        // In debug its nice to hit an assert so that we stop and
-    //        // can see what are the things that were sent in to break it.
-    //        assert(false);
-    //        return -1;
-    //        }
-    //        */
-    //
-    //
-    //        clGetEventProfilingInfo(
-    //            capture_event,
-    //            CL_PROFILING_COMMAND_SUBMIT,
-    //            sizeof(cl_ulong),
-    //            &cl_submit_time,
-    //            nullptr
-    //        );
-    //
-    //        clGetEventProfilingInfo(
-    //            capture_event,
-    //            CL_PROFILING_COMMAND_START,
-    //            sizeof(cl_ulong),
-    //            &cl_start_time,
-    //            nullptr
-    //        );
-    //
-    //        clGetEventProfilingInfo(
-    //            capture_event,
-    //            CL_PROFILING_COMMAND_END,
-    //            sizeof(cl_ulong),
-    //            &cl_finish_time,
-    //            nullptr
-    //        );
-    //
-    //        cl_opt1_time_captures_submit.emplace_back(cl_submit_time, cl_finish_time);
-    //        cl_opt1_time_captures_finish.emplace_back(cl_start_time, cl_finish_time);
-    //    }
-    //
-    //    // Free up all of the pointers that we allocated earlier.
-    //    free_pointers(malloced_pointers, alligned_malloced_pointers);
-    //
-    //    const auto naive_enque_results = print_results(naive_time_captures_enque, "naive_enque");
-    //    const auto naive_finish_results = print_results(naive_time_captures_finish, "naive_finish");
-    //    const auto opt1_enque_results = print_results(opt1_time_captures_enque, "opt1_enque");
-    //    const auto opt1_finish_results = print_results(opt1_time_captures_finish, "opt1_finish");
-    //
-    //    const auto cl_naive_submit_results = print_results(cl_naive_time_captures_submit, "cl_naive_submit");
-    //    const auto cl_naive_finish_results = print_results(cl_naive_time_captures_finish, "cl_naive_finish");
-    //    const auto cl_opt1_submit_results = print_results(cl_opt1_time_captures_submit, "cl_opt1_submit");
-    //    const auto cl_opt1_finish_results = print_results(cl_opt1_time_captures_finish, "cl_opt1_finish");
-    //
-    //
-    //    std::ofstream myfile;
-    //
-    //    myfile.open(output_directory + "result_output.txt", std::ios::out);
-    //
-    //    myfile << "naive_enque: Average = " << naive_enque_results.first << "ms; Standard Deviation = " <<
-    //        naive_enque_results.second << std::endl;
-    //    myfile << "naive_finish: Average = " << naive_finish_results.first << "ms; Standard Deviation = " <<
-    //        naive_finish_results.second << std::endl;
-    //    myfile << "opt1_enque: Average = " << opt1_enque_results.first << "ms; Standard Deviation = " << opt1_enque_results.
-    //        second << std::endl;
-    //    myfile << "opt1_finish: Average = " << opt1_finish_results.first << "ms; Standard Deviation = " <<
-    //        opt1_finish_results.second << std::endl;
-    //    myfile << "cl_naive_submit: Average = " << cl_naive_submit_results.first << "ms; Standard Deviation = " <<
-    //        cl_naive_submit_results.second << std::endl;
-    //    myfile << "cl_naive_finish: Average = " << cl_naive_finish_results.first << "ms; Standard Deviation = " <<
-    //        cl_naive_finish_results.second << std::endl;
-    //    myfile << "cl_opt1_submit: Average = " << cl_opt1_submit_results.first << "ms; Standard Deviation = " <<
-    //        cl_opt1_submit_results.second << std::endl;
-    //    myfile << "cl_opt1_finish: Average = " << cl_opt1_finish_results.first << "ms; Standard Deviation = " <<
-    //        cl_opt1_finish_results.second << std::endl;
-    //
-    //    myfile.close();
-    //
     free_pointers(malloced_pointers, alligned_malloced_pointers);
     return 0;
 }

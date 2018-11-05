@@ -1,7 +1,7 @@
 #include "GenerateCoef.h"
 #include <cassert>
 
-std::vector<std::vector<float>> generate_gauss_blur(const uint32_t &mat_size, const uint32_t &sigma2)
+std::vector<float> generate_gauss_blur(const uint32_t &mat_size, const float &sigma2)
 {
     // What are the max and min values going to be.
     const auto max_val = 1.0f;
@@ -46,21 +46,19 @@ std::vector<std::vector<float>> generate_gauss_blur(const uint32_t &mat_size, co
 
     // Generate the actual curve. 
     // F = Ap * exp(-(X. ^ 2 + Y. ^ 2) / (2 * sigma2));
-    std::vector<std::vector<float>> xy_grid;
-    xy_grid.reserve(mat_size);
+    std::vector<float> xy_grid;
+    xy_grid.reserve(mat_size * mat_size);
 
     auto f_sum = 0.0f;
 
     for (uint32_t i = 0; i < mat_size; ++i)
     {
-        // Create the row.
-        xy_grid.emplace_back();
         for (uint32_t j = 0; j < mat_size; ++j)
         {
             // Fill in the row.
             auto f_val = amplitude * exp(-(pow(x_grid[i][j], 2) + pow(y_grid[i][j], 2)) / (2 * sigma2));
             f_sum += f_val;
-            xy_grid[i].push_back(f_val);
+            xy_grid.push_back(f_val);
         }
     }
 
@@ -70,15 +68,11 @@ std::vector<std::vector<float>> generate_gauss_blur(const uint32_t &mat_size, co
     auto normed_sum = 0.0f;
 
     // Normalize the xy_grid.
-    for (uint32_t i = 0; i < mat_size; ++i)
+    for (auto & val : xy_grid)
     {
-        // Create the row.
-        for (uint32_t j = 0; j < mat_size; ++j)
-        {
-            const auto normed_val = xy_grid[i][j] * f_norm;
-            xy_grid[i][j] = normed_val;
-            normed_sum += normed_val;
-        }
+        const auto normed_val = val * f_norm;
+        val = normed_val;
+        normed_sum += normed_val;
     }
 
     assert(normed_sum > 0.999f && normed_sum < 1.001f);

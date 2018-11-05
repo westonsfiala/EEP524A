@@ -33,18 +33,18 @@ static const std::string output_directory = base_directory + "Outputs/";
 static const std::string src_directory = base_directory + "src/";
 static const std::string blur_kernel_file = src_directory + "Blur_Kernel.cl";
 static const std::string lena_file = src_directory + "tiny-Lena_32bit.png";
-//static const std::string little_lena_file = src_directory + "little-Lena_24bit.png";
+static const std::string little_lena_file = src_directory + "little-Lena_24bit.png";
 static const std::string normal_lena_file = src_directory + "lena_512x512_32bit.png";
 static const std::string big_lena_file = src_directory + "Big_Gray-Lena_8bit.png";
 
-static const std::vector<std::string> lena_files = { lena_file/*, little_lena_file*/, normal_lena_file, big_lena_file };
+static const std::vector<std::string> lena_files = { lena_file, little_lena_file, normal_lena_file, big_lena_file };
 
 const static std::string conv_filter_kernel_name = "img_conv_filter";
 
 const static std::vector<uint32_t> filter_sizes = { 5, 7, 9 };
 const static std::vector<float> filter_sigma2s = { 0.75f, 1.2f };
 
-const static uint32_t kernel_iterations = 500;
+const static uint32_t kernel_iterations = 1;
 
 // Got from https://stackoverflow.com/questions/33268513/calculating-standard-deviation-variance-in-c
 double Variance(const std::vector<double>& samples)
@@ -137,6 +137,27 @@ std::pair<double, double> print_results(std::vector<std::pair<cl_ulong, cl_ulong
 
     myfile.close();
     return {Average(samples), StandardDeviation(samples)};
+}
+
+uint8_t* convert_3_to_4_channel(uint8_t* three_channel_data, const uint32_t& num_pixels)
+{
+    // ReSharper disable once CppLocalVariableMayBeConst
+    auto four_channel_data = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * num_pixels * 4));
+
+    const auto num_channel_data = num_pixels * 3;
+    for(uint32_t i = 0; i < num_channel_data; i += 3)
+    {
+        const auto four_channel_index = i * 4 / 3;
+        assert(i * 4 % 3 == 0);
+        four_channel_data[four_channel_index] = three_channel_data[i];
+        four_channel_data[four_channel_index+1] = three_channel_data[i+1];
+        four_channel_data[four_channel_index+2] = three_channel_data[i+2];
+        four_channel_data[four_channel_index+3] = static_cast<uint8_t>(255);
+    }
+
+    free(three_channel_data);
+
+    return four_channel_data;
 }
 
 
@@ -744,62 +765,6 @@ int main(int argc, char** argv)
             {
                 const cl_mem_flags lena_input_image_flags = CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY;
                 const cl_mem_flags lena_output_image_flags = CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY;
-
-                /*
-                size_t num_supported;
-
-                // Find out what image formats are supported
-                success = clGetSupportedImageFormats(
-                    chosen_context,
-                    lena_output_image_flags,
-                    CL_MEM_OBJECT_IMAGE2D,
-                    0,
-                    nullptr,
-                    &num_supported
-                );
-                if (!process_cl_call_status("clGetSupportedImageFormats", success))
-                {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
-                    // In debug its nice to hit an assert so that we stop and 
-                    // can see what are the things that were sent in to break it.
-                    assert(false);
-                    return -1;
-                }
-
-                cl_image_format* supported_formats = static_cast<cl_image_format*>(malloc(sizeof(cl_image_format) * num_supported));
-                malloced_pointers.push_back(supported_formats);
-
-                // Find out what image formats are supported
-                success = clGetSupportedImageFormats(
-                    chosen_context,
-                    lena_output_image_flags,
-                    CL_MEM_OBJECT_IMAGE2D,
-                    num_supported,
-                    supported_formats,
-                    nullptr
-                );
-                if (!process_cl_call_status("clGetSupportedImageFormats", success))
-                {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
-                    // In debug its nice to hit an assert so that we stop and 
-                    // can see what are the things that were sent in to break it.
-                    assert(false);
-                    return -1;
-                }
-
-                for(uint32_t i = 0; i < num_supported; ++i)
-                {
-                    const auto supported_format = supported_formats[i];
-                    if(supported_format.image_channel_data_type == CL_UNSIGNED_INT8)
-                    {
-                        const auto supported_order = supported_format.image_channel_order;
-                        if(supported_order == CL_RGB)
-                        {
-                            auto blah = 5;
-                        }
-                    }
-                }
-                */
                 
 
                 // Assign variables
@@ -809,9 +774,8 @@ int main(int argc, char** argv)
                 int32_t lena_x;
                 int32_t lena_y;
                 int32_t lena_num_channels;
-                const auto lena_data = stbi_load(lena_file.c_str(), &lena_x, &lena_y, &lena_num_channels, 0);
+                auto lena_data = static_cast<uint8_t*>(stbi_load(lena_file.c_str(), &lena_x, &lena_y, &lena_num_channels, 0));
                 assert(lena_data);
-                malloced_pointers.push_back(lena_data);
 
                 cl_image_format lena_image_format;
                 lena_image_format.image_channel_data_type = CL_UNSIGNED_INT8;
@@ -824,8 +788,9 @@ int main(int argc, char** argv)
                     lena_image_format.image_channel_order = CL_RA;
                     break;
                 case 3:
-                    lena_image_format.image_channel_order = CL_RGB;
-                    break;
+                    // My board does not support 3 channels of data, so I just add a 4th A channel with its value set to 255.
+                    lena_data = convert_3_to_4_channel(lena_data, lena_x * lena_y);
+                    lena_num_channels = 4;
                 case 4:
                     lena_image_format.image_channel_order = CL_RGBA;
                     break;
@@ -833,6 +798,9 @@ int main(int argc, char** argv)
                     assert(false);
                     break;
                 }
+
+                // lena_data pointer may be swapped out in the case of 3 channels of data.
+                malloced_pointers.push_back(lena_data);
 
                 cl_image_desc lena_image_desc;
                 lena_image_desc.image_type = CL_MEM_OBJECT_IMAGE2D;
@@ -919,8 +887,8 @@ int main(int argc, char** argv)
 
                 cl_sampler_properties lena_sampler_properties[] = {
                     CL_SAMPLER_NORMALIZED_COORDS, false,
-                    CL_SAMPLER_ADDRESSING_MODE, CL_ADDRESS_CLAMP,
-                    CL_SAMPLER_FILTER_MODE, CL_FILTER_LINEAR
+                    CL_SAMPLER_ADDRESSING_MODE, CL_ADDRESS_CLAMP_TO_EDGE,
+                    CL_SAMPLER_FILTER_MODE, CL_FILTER_NEAREST
                     ,0 };
 
                 auto lena_sampler = clCreateSamplerWithProperties(
@@ -1037,6 +1005,7 @@ int main(int argc, char** argv)
                         nullptr,
                         nullptr
                     );
+                    /*
                     if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
                     {
                         free_pointers(malloced_pointers, alligned_malloced_pointers);
@@ -1045,11 +1014,13 @@ int main(int argc, char** argv)
                         assert(false);
                         return -1;
                     }
+                    */
 
                     QueryPerformanceCounter(&finish_time);
 
                     // Wait for the kernel to finish
                     success = clFinish(chosen_command_queue);
+                    /*
                     if (!process_cl_call_status("clFinish", success))
                     {
                         free_pointers(malloced_pointers, alligned_malloced_pointers);
@@ -1058,6 +1029,7 @@ int main(int argc, char** argv)
                         assert(false);
                         return -1;
                     }
+                    */
 
                     lena_time_captures_enque.emplace_back(start_time, finish_time);
 
@@ -1075,6 +1047,7 @@ int main(int argc, char** argv)
                         nullptr,
                         nullptr
                     );
+                    /*
                     if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
                     {
                         free_pointers(malloced_pointers, alligned_malloced_pointers);
@@ -1083,11 +1056,13 @@ int main(int argc, char** argv)
                         assert(false);
                         return -1;
                     }
+                    */
 
                     //QueryPerformanceCounter(&finish_time);
 
                     // Wait for the kernel to finish
                     success = clFinish(chosen_command_queue);
+                    /*
                     if (!process_cl_call_status("clFinish", success))
                     {
                         free_pointers(malloced_pointers, alligned_malloced_pointers);
@@ -1096,22 +1071,76 @@ int main(int argc, char** argv)
                         assert(false);
                         return -1;
                     }
+                    */
 
                     QueryPerformanceCounter(&finish_time);
 
                     lena_time_captures_finish.emplace_back(start_time, finish_time);
                 }
+
+                // Get the image back out of the device.
+
+                size_t origin[] = { 0,0,0 };
+                size_t region[] = { lena_x, lena_y, 1 };
+                size_t row_pitch = 0;
+                size_t slice_pitch = 0;
+
+                const auto lena_output_image_data = clEnqueueMapImage(
+                    chosen_command_queue,
+                    lena_output_image_mem,
+                    true,
+                    CL_MAP_READ,
+                    origin,
+                    region,
+                    &row_pitch,
+                    &slice_pitch,
+                    0,
+                    nullptr,
+                    nullptr,
+                    &success
+                );
+                if (!process_cl_call_status("clEnqueueMapImage", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
                 printf("finished timing.\nPrinting results\n\n");
 
                 const auto run_name_enque = run_name_base + "_enque_times";
                 const auto run_name_finish = run_name_base + "_finish_times";
                 const auto run_name_results = run_name_base + "_results.txt";
+                const auto run_name_print = output_directory + run_name_base + "_image.png";
 
                 const auto lena_enque_results = print_results(lena_time_captures_enque, run_name_enque);
                 const auto lena_finish_results = print_results(lena_time_captures_finish, run_name_finish);
 
                 results_outputs[run_name_enque] = lena_enque_results;
                 results_outputs[run_name_finish] = lena_finish_results;
+
+
+                success = stbi_write_png(run_name_print.c_str(), lena_x, lena_y, lena_num_channels, lena_output_image_data, sizeof(char) * lena_x * lena_num_channels);
+                assert(success);
+
+                success = clEnqueueUnmapMemObject(
+                    chosen_command_queue,
+                    lena_output_image_mem,
+                    lena_output_image_data,
+                    0,
+                    nullptr,
+                    nullptr
+                );
+                if (!process_cl_call_status("clEnqueueUnmapMemObject", success))
+                {
+                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    // In debug its nice to hit an assert so that we stop and
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
             }
         }
     }

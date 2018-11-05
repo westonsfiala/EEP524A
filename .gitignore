@@ -63,12 +63,14 @@ artifacts/
 *.tmp
 *.tmp_proj
 *.log
+*.tlog
 *.vspscc
 *.vssscc
 .builds
 *.pidb
 *.svclog
 *.scc
+*.idb
 
 # Chutzpah Test files
 _Chutzpah*
@@ -121,6 +123,14 @@ AutoTest.Net/
 
 # Web workbench (sass)
 .sass-cache/
+
+*LastRun*
+*.obj
+*.idb
+*.exe
+*.ilk
+*.iobj
+*.ipdb
 
 # Installshield output folder
 [Ee]xpress/

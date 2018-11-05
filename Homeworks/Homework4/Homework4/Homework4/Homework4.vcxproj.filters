@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="OpenCL Files">
+      <UniqueIdentifier>{D011BB44-1BF7-4113-997B-A081035B40D8}</UniqueIdentifier>
+      <Extensions>cl</Extensions>
+    </Filter>
+    <Filter Include="FilterCoefs">
+      <UniqueIdentifier>{5a5f15ca-89cb-4b64-828b-3a6336295dd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Images">
+      <UniqueIdentifier>{ed207373-b43f-42d1-89ba-c9c164805d09}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\src\Big_Gray-Lena_8bit.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\..\src\lena_512x512_32bit.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\..\src\little-Lena_24bit.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\..\src\tiny-Lena_32bit.png">
+      <Filter>Images</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Intel_OpenCL_Build_Rules Include="..\..\src\Blur_Kernel.cl">
+      <Filter>OpenCL Files</Filter>
+    </Intel_OpenCL_Build_Rules>
+    <Intel_OpenCL_Build_Rules Include="..\..\src\Rotate_Kernel.cl">
+      <Filter>OpenCL Files</Filter>
+    </Intel_OpenCL_Build_Rules>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\filterCoef_5x5_sigma0.750000.csv">
+      <Filter>FilterCoefs</Filter>
+    </None>
+    <None Include="..\..\src\filterCoef_5x5_sigma1.200000.csv">
+      <Filter>FilterCoefs</Filter>
+    </None>
+    <None Include="..\..\src\filterCoef_7x7_sigma0.750000.csv">
+      <Filter>FilterCoefs</Filter>
+    </None>
+    <None Include="..\..\src\filterCoef_7x7_sigma1.200000.csv">
+      <Filter>FilterCoefs</Filter>
+    </None>
+    <None Include="..\..\src\filterCoef_9x9_sigma0.750000.csv">
+      <Filter>FilterCoefs</Filter>
+    </None>
+    <None Include="..\..\src\filterCoef_9x9_sigma1.200000.csv">
+      <Filter>FilterCoefs</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\host.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\GenerateCoef.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\read_source.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\GenerateCoef.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\stb_image_write.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

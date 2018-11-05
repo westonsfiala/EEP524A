@@ -1,0 +1,42 @@
+[General]
+ActiveTab=Blur_Kernel
+
+[KBSession]
+KBTabs\2\TabFile=Blur_Kernel
+KBTabs\2\TabName=Blur_Kernel
+KBTabs\2\KBCache="&img_conv_filter$inputImg;outputImg;cols;rows$image2d_t;image2d_t;int;int$__global;__global;__private;__private$READ_ONLY;WRITE_ONLY;NONE;NONE"
+KBTabs\2\KBVarsByKernel="img_conv_filter#inputImg&1&input_image;outputImg&1&output_image;cols&3&620;rows&3&460"
+KBTabs\2\KBRefsByKernel="img_conv_filter#inputImg&;outputImg&;cols&;rows&"
+KBTabs\2\KBGroupSizes=620#460#0#0#0#0
+KBTabs\2\KBIterations=1
+KBTabs\2\KBConfigurationNames=config_0
+KBTabs\2\KBWorkFlows=
+KBTabs\2\KBWorkFlowsSetting=
+KBTabs\2\KBExternalBinaries=
+KBTabs\2\KBSelectedKernel=img_conv_filter
+KBTabs\2\TabCode=C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture6\\Blur_Kernel\\program.ir
+KBTabs\2\KBFacadeVisible=true
+KBTabs\2\IsValidation=false
+KBTabs\2\KBServerActive=true
+KBTabs\2\Artifacts="C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture6\\Blur_Kernel\\program.ir;C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture6\\Blur_Kernel\\program_img_conv_filter.gen;"
+KBTabs\2\Reports=C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture6\\Blur_Kernel\\LastRunResults/img_conv_filter.cbreport
+KBTabs\2\CLFiles=C:\\work\\GitHub\\EEP524A\\Lectures\\Lecture6\\Blur_Kernel\\program.cl
+KBTabs\2\IsBinary=false
+KBTabs\2\TabOpt6=
+KBTabs\2\TabOpt7=2
+KBTabs\2\TabOpt10=(local) LAPTOP-MC018RMV
+KBTabs\2\TabOpt17=Intel(R) OpenCL
+KBTabs\2\TabOpt18=GPU: Intel(R) UHD Graphics 620
+KBTabs\2\TabOpt1=true
+KBTabs\2\TabOpt3=false
+KBTabs\2\TabOpt9=Current Operating System
+KBTabs\2\TabOpt11=
+KBTabs\2\TabOpt4=false
+KBTabs\2\TabOpt13=5010
+KBTabs\2\TabOpt14=5999
+KBTabs\2\TabOpt15=true
+KBTabs\2\TabOpt16=20000
+KBTabs\2\TabOpt2=-asm$
+KBTabs\2\TabOpt19=
+KBTabs\2\TabOpt20=
+KBTabs\size=2

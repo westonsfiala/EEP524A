@@ -43,10 +43,7 @@ const static std::string CONV_FILTER_KERNEL_NAME = "img_conv_filter";
 const static std::vector<uint32_t> FILTER_SIZES = {5, 7, 9};
 const static std::vector<float> FILTER_SIGMA2_S = {0.75f, 1.2f};
 
-const static uint32_t KERNEL_ITERATIONS = 1;
-
-// Sometimes the kernel prints out bad results. In this case just re run the entire kernel until the printed file size breaks this size.
-const static uint32_t BAD_RESULTS_IMAGE_SIZE = 25000;
+const static uint32_t KERNEL_ITERATIONS = 100;
 
 // Got from https://stackoverflow.com/questions/33268513/calculating-standard-deviation-variance-in-c
 double variance(const std::vector<double>& samples)
@@ -787,6 +784,8 @@ int main(int argc, char** argv)
                 auto lenaData = static_cast<uint8_t*>(stbi_load(lenaFile.c_str(), &lenaX, &lenaY, &lenaNumChannels, 0));
                 assert(lenaData);
 
+                const auto originalImageSize = getFileSize(lenaFile);
+
                 cl_image_format lenaImageFormat;
                 lenaImageFormat.image_channel_data_type = CL_UNSIGNED_INT8;
                 switch (lenaNumChannels)
@@ -1149,7 +1148,7 @@ int main(int argc, char** argv)
                         const auto imageSize = getFileSize(runNamePrint);
 
                         // If the image size is too small, we will have a trash image, remake all the data and try to run it again.
-                        if (imageSize < BAD_RESULTS_IMAGE_SIZE)
+                        if (imageSize < static_cast<long>(originalImageSize * 0.75))
                         {
                             filterQueue--;
                             printf("Image Creation failed. Restarting filter run.\n");

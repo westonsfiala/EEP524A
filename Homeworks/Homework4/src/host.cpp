@@ -1,4 +1,3 @@
-// Add you host code
 #include "CL/cl.h"
 #include <cstdio>
 #include <cstdlib>
@@ -37,12 +36,12 @@ static const std::string little_lena_file = src_directory + "little-Lena_24bit.p
 static const std::string normal_lena_file = src_directory + "lena_512x512_32bit.png";
 static const std::string big_lena_file = src_directory + "Big_Gray-Lena_8bit.png";
 
-static const std::vector<std::string> lena_files = { lena_file, little_lena_file, normal_lena_file, big_lena_file };
+static const std::vector<std::string> lena_files = {lena_file, little_lena_file, normal_lena_file, big_lena_file};
 
 const static std::string conv_filter_kernel_name = "img_conv_filter";
 
-const static std::vector<uint32_t> filter_sizes = { 5, 7, 9 };
-const static std::vector<float> filter_sigma2s = { 0.75f, 1.2f };
+const static std::vector<uint32_t> filter_sizes = {5, 7, 9};
+const static std::vector<float> filter_sigma2s = {0.75f, 1.2f};
 
 const static uint32_t kernel_iterations = 1;
 
@@ -56,8 +55,8 @@ double Variance(const std::vector<double>& samples)
     for (uint32_t i = 1; i < size; i++)
     {
         t += samples[i];
-        const double diff = ((i + 1) * samples[i]) - t;
-        variance += (diff * diff) / ((i + 1.0) * i);
+        const double diff = (i + 1) * samples[i] - t;
+        variance += diff * diff / ((i + 1.0) * i);
     }
 
     return variance / (size - 1);
@@ -145,21 +144,20 @@ uint8_t* convert_3_to_4_channel(uint8_t* three_channel_data, const uint32_t& num
     auto four_channel_data = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * num_pixels * 4));
 
     const auto num_channel_data = num_pixels * 3;
-    for(uint32_t i = 0; i < num_channel_data; i += 3)
+    for (uint32_t i = 0; i < num_channel_data; i += 3)
     {
         const auto four_channel_index = i * 4 / 3;
         assert(i * 4 % 3 == 0);
         four_channel_data[four_channel_index] = three_channel_data[i];
-        four_channel_data[four_channel_index+1] = three_channel_data[i+1];
-        four_channel_data[four_channel_index+2] = three_channel_data[i+2];
-        four_channel_data[four_channel_index+3] = static_cast<uint8_t>(255);
+        four_channel_data[four_channel_index + 1] = three_channel_data[i + 1];
+        four_channel_data[four_channel_index + 2] = three_channel_data[i + 2];
+        four_channel_data[four_channel_index + 3] = static_cast<uint8_t>(255);
     }
 
     free(three_channel_data);
 
     return four_channel_data;
 }
-
 
 /**
  * \brief Frees up all of the pointers contained in the vectors.
@@ -324,7 +322,6 @@ int main(int argc, char** argv)
         return -1;
     }
 
-
     const auto platforms = static_cast<cl_platform_id*>(malloc(sizeof(cl_platform_id) * num_platforms));
 
     malloced_pointers.push_back(platforms);
@@ -343,7 +340,6 @@ int main(int argc, char** argv)
         assert(false);
         return -1;
     }
-
 
     cl_platform_id chosen_platform = nullptr;
     cl_device_id* chosen_devices = nullptr;
@@ -408,6 +404,11 @@ int main(int argc, char** argv)
             nullptr,
             &num_devices
         );
+        // Their is an issue where the CPU only experimental build will fail, just skip that one.
+        if (success == -1)
+        {
+            continue;
+        }
         if (!process_cl_call_status("clGetDeviceIDs", success))
         {
             free_pointers(malloced_pointers, alligned_malloced_pointers);
@@ -665,7 +666,7 @@ int main(int argc, char** argv)
     assert(blur_kernel_string);
 
     // The strings array is filled with the two null terminated strings.
-    const char* strings[] = { blur_kernel_string};
+    const char* strings[] = {blur_kernel_string};
     // Because the strings are null terminated, we pass in 0.
     const size_t lengths[] = {0};
 
@@ -702,13 +703,13 @@ int main(int argc, char** argv)
         // Get detailed build errors when they occur.
         size_t build_error_log_size;
         clGetProgramBuildInfo(chosen_program, chosen_devices[0], CL_PROGRAM_BUILD_LOG, 0, nullptr,
-                              &build_error_log_size);
+            &build_error_log_size);
 
         char* build_error = static_cast<char*>(malloc(sizeof(char) * build_error_log_size));
         malloced_pointers.push_back(build_error);
 
         clGetProgramBuildInfo(chosen_program, chosen_devices[0], CL_PROGRAM_BUILD_LOG, build_error_log_size,
-                              build_error, nullptr);
+            build_error, nullptr);
 
         std::string error_string = build_error;
         printf("%s\n", error_string.c_str());
@@ -755,15 +756,14 @@ int main(int argc, char** argv)
 
     std::map<std::string, std::pair<double, double>> results_outputs;
 
-    for (const auto &lena_file : lena_files)
+    for (const auto& lena_file : lena_files)
     {
-        for (const auto &filter_size : filter_sizes)
+        for (const auto& filter_size : filter_sizes)
         {
-            for (const auto &filter_sigma2 : filter_sigma2s)
+            for (const auto& filter_sigma2 : filter_sigma2s)
             {
                 const cl_mem_flags lena_input_image_flags = CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY;
                 const cl_mem_flags lena_output_image_flags = CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY;
-                
 
                 // Assign variables
                 // Blur Kernel
@@ -832,7 +832,7 @@ int main(int argc, char** argv)
                 success = clSetKernelArg(
                     blur_kernel,
                     0,
-                    sizeof(lena_image_mem),
+                    sizeof lena_image_mem,
                     &lena_image_mem
                 );
                 if (!process_cl_call_status("clSetKernelArg", success))
@@ -869,7 +869,7 @@ int main(int argc, char** argv)
                 success = clSetKernelArg(
                     blur_kernel,
                     1,
-                    sizeof(lena_output_image_mem),
+                    sizeof lena_output_image_mem,
                     &lena_output_image_mem
                 );
                 if (!process_cl_call_status("clSetKernelArg", success))
@@ -886,8 +886,8 @@ int main(int argc, char** argv)
                 cl_sampler_properties lena_sampler_properties[] = {
                     CL_SAMPLER_NORMALIZED_COORDS, false,
                     CL_SAMPLER_ADDRESSING_MODE, CL_ADDRESS_CLAMP_TO_EDGE,
-                    CL_SAMPLER_FILTER_MODE, CL_FILTER_NEAREST
-                    ,0 };
+                    CL_SAMPLER_FILTER_MODE, CL_FILTER_NEAREST, 0
+                };
 
                 auto lena_sampler = clCreateSamplerWithProperties(
                     chosen_context,
@@ -907,7 +907,7 @@ int main(int argc, char** argv)
                 success = clSetKernelArg(
                     blur_kernel,
                     2,
-                    sizeof(lena_sampler),
+                    sizeof lena_sampler,
                     &lena_sampler
                 );
                 if (!process_cl_call_status("clSetKernelArg", success))
@@ -943,7 +943,7 @@ int main(int argc, char** argv)
                 success = clSetKernelArg(
                     blur_kernel,
                     3,
-                    sizeof(blur_filter_mem),
+                    sizeof blur_filter_mem,
                     &blur_filter_mem
                 );
                 if (!process_cl_call_status("clSetKernelArg", success))
@@ -960,7 +960,7 @@ int main(int argc, char** argv)
                 success = clSetKernelArg(
                     blur_kernel,
                     4,
-                    sizeof(filter_size),
+                    sizeof filter_size,
                     &filter_size
                 );
                 if (!process_cl_call_status("clSetKernelArg", success))
@@ -972,11 +972,10 @@ int main(int argc, char** argv)
                     return -1;
                 }
 
-
                 // Enque the kernel
-                size_t global_work_offset[] = { 0, 0, 0 };
-                size_t global_work_size[] = { lena_x, lena_y, 0 };
-                size_t local_work_size[] = { 1, 1, 0 };
+                size_t global_work_offset[] = {0, 0, 0};
+                size_t global_work_size[] = {lena_x, lena_y, 0};
+                size_t local_work_size[] = {1, 1, 0};
 
                 // Get the maps ready for timing
                 std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lena_time_captures_enque;
@@ -986,7 +985,7 @@ int main(int argc, char** argv)
 
                 const auto run_name_base = "Lena_" + std::to_string(lena_x) + "x" + std::to_string(lena_y) + "_filt_" + std::to_string(filter_size) + "_sig2_" + std::to_string(filter_sigma2);
 
-                printf("Starting run timing for %d iterations on %s\n",kernel_iterations, run_name_base.c_str());
+                printf("Starting run timing for %d iterations on %s\n", kernel_iterations, run_name_base.c_str());
                 for (uint32_t i = 0; i < kernel_iterations; ++i)
                 {
                     // Do the captures for the enque time
@@ -1078,8 +1077,8 @@ int main(int argc, char** argv)
 
                 // Get the image back out of the device.
 
-                size_t origin[] = { 0,0,0 };
-                size_t region[] = { lena_x, lena_y, 1 };
+                size_t origin[] = {0, 0, 0};
+                size_t region[] = {lena_x, lena_y, 1};
                 size_t row_pitch = 0;
                 size_t slice_pitch = 0;
 
@@ -1119,7 +1118,6 @@ int main(int argc, char** argv)
                 results_outputs[run_name_enque] = lena_enque_results;
                 results_outputs[run_name_finish] = lena_finish_results;
 
-
                 success = stbi_write_png(run_name_print.c_str(), lena_x, lena_y, lena_num_channels, lena_output_image_data, sizeof(char) * lena_x * lena_num_channels);
                 assert(success);
 
@@ -1147,9 +1145,8 @@ int main(int argc, char** argv)
 
     myfile.open(output_directory + "results.txt", std::ios::out);
 
-    for (const auto &run : results_outputs)
+    for (const auto& run : results_outputs)
     {
-
         myfile << run.first << ": Average = " << run.second.first << "ms; Standard Deviation = " <<
             run.second.second << std::endl;
     }

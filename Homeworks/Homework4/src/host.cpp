@@ -20,54 +20,57 @@
 #define DONT_PRINT_CALL_SUCCESSES
 
 // What platform and device to use.
-const static std::string platform_name_to_use = "Intel(R) OpenCL";
-const static std::string prefered_device_name = "Intel(R) UHD Graphics 620";
+const static std::string PLATFORM_NAME_TO_USE = "Intel(R) OpenCL";
+const static std::string PREFERED_DEVICE_NAME = "Intel(R) UHD Graphics 620";
 
 /*************************************************************************
  * CHANGE THE FOLLOWING LINES TO WHERE EVER YOU HAVE EVERYTHING MAPPED TO.
  *************************************************************************/
 //Set the output directories that need to be used.
-static const std::string base_directory = "C:/work/GitHub/EEP524A/Homeworks/Homework4/";
-static const std::string output_directory = base_directory + "Outputs/";
-static const std::string src_directory = base_directory + "src/";
-static const std::string blur_kernel_file = src_directory + "Blur_Kernel.cl";
-static const std::string lena_file = src_directory + "tiny-Lena_32bit.png";
-static const std::string little_lena_file = src_directory + "little-Lena_24bit.png";
-static const std::string normal_lena_file = src_directory + "lena_512x512_32bit.png";
-static const std::string big_lena_file = src_directory + "Big_Gray-Lena_8bit.png";
+static const std::string BASE_DIRECTORY = "C:/work/GitHub/EEP524A/Homeworks/Homework4/";
+static const std::string OUTPUT_DIRECTORY = BASE_DIRECTORY + "Outputs/";
+static const std::string SRC_DIRECTORY = BASE_DIRECTORY + "src/";
+static const std::string BLUR_KERNEL_FILE = SRC_DIRECTORY + "Blur_Kernel.cl";
+static const std::string LENA_FILE = SRC_DIRECTORY + "tiny-Lena_32bit.png";
+static const std::string LITTLE_LENA_FILE = SRC_DIRECTORY + "little-Lena_24bit.png";
+static const std::string NORMAL_LENA_FILE = SRC_DIRECTORY + "lena_512x512_32bit.png";
+static const std::string BIG_LENA_FILE = SRC_DIRECTORY + "Big_Gray-Lena_8bit.png";
 
-static const std::vector<std::string> lena_files = {lena_file, little_lena_file, normal_lena_file, big_lena_file};
+static const std::vector<std::string> LENA_FILES = {LENA_FILE, LITTLE_LENA_FILE, NORMAL_LENA_FILE, BIG_LENA_FILE};
 
-const static std::string conv_filter_kernel_name = "img_conv_filter";
+const static std::string CONV_FILTER_KERNEL_NAME = "img_conv_filter";
 
-const static std::vector<uint32_t> filter_sizes = {5, 7, 9};
-const static std::vector<float> filter_sigma2s = {0.75f, 1.2f};
+const static std::vector<uint32_t> FILTER_SIZES = {5, 7, 9};
+const static std::vector<float> FILTER_SIGMA2_S = {0.75f, 1.2f};
 
-const static uint32_t kernel_iterations = 1;
+const static uint32_t KERNEL_ITERATIONS = 1;
+
+// Sometimes the kernel prints out bad results. In this case just re run the entire kernel until the printed file size breaks this size.
+const static uint32_t BAD_RESULTS_IMAGE_SIZE = 25000;
 
 // Got from https://stackoverflow.com/questions/33268513/calculating-standard-deviation-variance-in-c
-double Variance(const std::vector<double>& samples)
+double variance(const std::vector<double>& samples)
 {
     const auto size = samples.size();
 
     double variance = 0;
-    double t = samples[0];
+    auto t = samples[0];
     for (uint32_t i = 1; i < size; i++)
     {
         t += samples[i];
-        const double diff = (i + 1) * samples[i] - t;
+        const auto diff = (i + 1) * samples[i] - t;
         variance += diff * diff / ((i + 1.0) * i);
     }
 
     return variance / (size - 1);
 }
 
-double StandardDeviation(const std::vector<double>& samples)
+double standardDeviation(const std::vector<double>& samples)
 {
-    return sqrt(Variance(samples));
+    return sqrt(variance(samples));
 }
 
-double Average(const std::vector<double>& samples)
+double average(const std::vector<double>& samples)
 {
     auto average = 0.0;
     if (!samples.empty())
@@ -82,109 +85,117 @@ double Average(const std::vector<double>& samples)
     return average;
 }
 
-std::pair<double, double> print_results(std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>>& times, const std::string& filename)
+// https://stackoverflow.com/questions/5840148/how-can-i-get-a-files-size-in-c
+long getFileSize(std::string filename)
+{
+    struct stat statBuf;
+    const auto rc = stat(filename.c_str(), &statBuf);
+    return rc == 0 ? statBuf.st_size : -1;
+}
+
+std::pair<double, double> printResults(std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>>& times, const std::string& filename)
 {
     std::ofstream myfile;
 
-    const auto file_path = output_directory + filename + ".csv";
+    const auto filePath = OUTPUT_DIRECTORY + filename + ".csv";
 
     LARGE_INTEGER frequency;
     QueryPerformanceFrequency(&frequency);
 
     std::vector<double> samples;
 
-    myfile.open(file_path, std::ios::out);
+    myfile.open(filePath, std::ios::out);
 
-    for (const auto& time_stamp : times)
+    for (const auto& timeStamp : times)
     {
-        double elapsed_time = time_stamp.second.QuadPart - time_stamp.first.QuadPart;
+        double elapsedTime = timeStamp.second.QuadPart - timeStamp.first.QuadPart;
 
         // Convert from number of counts to number of milliseconds
-        elapsed_time *= 1000000;
-        elapsed_time /= frequency.QuadPart;
+        elapsedTime *= 1000000;
+        elapsedTime /= frequency.QuadPart;
 
-        samples.push_back(static_cast<double>(elapsed_time));
+        samples.push_back(static_cast<double>(elapsedTime));
 
-        myfile << elapsed_time << std::endl;
+        myfile << elapsedTime << std::endl;
     }
 
     myfile.close();
 
-    return {Average(samples), StandardDeviation(samples)};
+    return {average(samples), standardDeviation(samples)};
 }
 
-std::pair<double, double> print_results(std::vector<std::pair<cl_ulong, cl_ulong>>& times, const std::string& filename)
+std::pair<double, double> printResults(std::vector<std::pair<cl_ulong, cl_ulong>>& times, const std::string& filename)
 {
     std::ofstream myfile;
 
-    const auto file_path = output_directory + filename + ".csv";
+    const auto filePath = OUTPUT_DIRECTORY + filename + ".csv";
 
     std::vector<double> samples;
 
-    myfile.open(file_path, std::ios::out);
+    myfile.open(filePath, std::ios::out);
 
-    for (const auto& time_stamp : times)
+    for (const auto& timeStamp : times)
     {
-        double elapsed_time = time_stamp.second - time_stamp.first;
+        double elapsedTime = timeStamp.second - timeStamp.first;
 
-        elapsed_time /= 1000000.0;
+        elapsedTime /= 1000000.0;
 
-        samples.push_back(elapsed_time);
+        samples.push_back(elapsedTime);
 
-        myfile << elapsed_time << std::endl;
+        myfile << elapsedTime << std::endl;
     }
 
     myfile.close();
-    return {Average(samples), StandardDeviation(samples)};
+    return {average(samples), standardDeviation(samples)};
 }
 
-uint8_t* convert_3_to_4_channel(uint8_t* three_channel_data, const uint32_t& num_pixels)
+uint8_t* convert3To4Channel(uint8_t* threeChannelData, const uint32_t& numPixels)
 {
     // ReSharper disable once CppLocalVariableMayBeConst
-    auto four_channel_data = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * num_pixels * 4));
+    auto fourChannelData = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * numPixels * 4));
 
-    const auto num_channel_data = num_pixels * 3;
-    for (uint32_t i = 0; i < num_channel_data; i += 3)
+    const auto numChannelData = numPixels * 3;
+    for (uint32_t i = 0; i < numChannelData; i += 3)
     {
-        const auto four_channel_index = i * 4 / 3;
+        const auto fourChannelIndex = i * 4 / 3;
         assert(i * 4 % 3 == 0);
-        four_channel_data[four_channel_index] = three_channel_data[i];
-        four_channel_data[four_channel_index + 1] = three_channel_data[i + 1];
-        four_channel_data[four_channel_index + 2] = three_channel_data[i + 2];
-        four_channel_data[four_channel_index + 3] = static_cast<uint8_t>(255);
+        fourChannelData[fourChannelIndex] = threeChannelData[i];
+        fourChannelData[fourChannelIndex + 1] = threeChannelData[i + 1];
+        fourChannelData[fourChannelIndex + 2] = threeChannelData[i + 2];
+        fourChannelData[fourChannelIndex + 3] = static_cast<uint8_t>(255);
     }
 
-    free(three_channel_data);
+    free(threeChannelData);
 
-    return four_channel_data;
+    return fourChannelData;
 }
 
 /**
  * \brief Frees up all of the pointers contained in the vectors.
- * \param unaligned_pointers Vector to all the pointers that were generated with malloc.
- * \param aligned_pointers Vector to all the pointers that were generated with alligned_malloc.
+ * \param unalignedPointers Vector to all the pointers that were generated with malloc.
+ * \param alignedPointers Vector to all the pointers that were generated with alligned_malloc.
  */
-void free_pointers(std::vector<void*>& unaligned_pointers, std::vector<void*>& aligned_pointers)
+void freePointers(std::vector<void*>& unalignedPointers, std::vector<void*>& alignedPointers)
 {
-    for (auto unaligned_pointer : unaligned_pointers)
+    for (auto unalignedPointer : unalignedPointers)
     {
-        free(unaligned_pointer);
+        free(unalignedPointer);
     }
 
-    for (auto aligned_pointer : aligned_pointers)
+    for (auto alignedPointer : alignedPointers)
     {
-        _aligned_free(aligned_pointer);
+        _aligned_free(alignedPointer);
     }
 
-    unaligned_pointers.clear();
-    aligned_pointers.clear();
+    unalignedPointers.clear();
+    alignedPointers.clear();
 }
 
 /*
 * Given a cl code and return a string represenation
 * https://stackoverflow.com/questions/24326432/convenient-way-to-show-opencl-error-codes
 */
-const char* clGetErrorString(int errorCode)
+const char* clGetErrorString(const int errorCode)
 {
     switch (errorCode)
     {
@@ -282,10 +293,10 @@ const char* clGetErrorString(int errorCode)
     }
 }
 
-bool process_cl_call_status(const std::string& call_name, const cl_int error_code)
+bool processClCallStatus(const std::string& callName, const cl_int errorCode)
 {
     // Success Case
-    if (error_code == CL_SUCCESS)
+    if (errorCode == CL_SUCCESS)
     {
 #ifndef DONT_PRINT_CALL_SUCCESSES
         printf("%s(...) succeeded.\n", call_name.c_str());
@@ -294,340 +305,340 @@ bool process_cl_call_status(const std::string& call_name, const cl_int error_cod
     }
     // Everything else is a failure.
 
-    printf("%s(...) failed with code: %s\n", call_name.c_str(), clGetErrorString(error_code));
+    printf("%s(...) failed with code: %s\n", callName.c_str(), clGetErrorString(errorCode));
     return false;
 }
 
 int main(int argc, char** argv)
 {
     // Create containers to track all the pointers than need to be freed when we finish up.
-    std::vector<void*> malloced_pointers;
-    std::vector<void*> alligned_malloced_pointers;
+    std::vector<void*> mallocedPointers;
+    std::vector<void*> allignedMallocedPointers;
 
-    cl_uint num_platforms = 0;
+    cl_uint numPlatforms = 0;
 
     // Get the number of platforms
     auto success = clGetPlatformIDs(
         0,
         nullptr,
-        &num_platforms
+        &numPlatforms
     );
 
-    if (!process_cl_call_status("clGetPlatformIDs", success))
+    if (!processClCallStatus("clGetPlatformIDs", success))
     {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
+        freePointers(mallocedPointers, allignedMallocedPointers);
         // In debug its nice to hit an assert so that we stop and 
         // can see what are the things that were sent in to break it.
         assert(false);
         return -1;
     }
 
-    const auto platforms = static_cast<cl_platform_id*>(malloc(sizeof(cl_platform_id) * num_platforms));
+    const auto platforms = static_cast<cl_platform_id*>(malloc(sizeof(cl_platform_id) * numPlatforms));
 
-    malloced_pointers.push_back(platforms);
+    mallocedPointers.push_back(platforms);
 
     // Get the platforms
     success = clGetPlatformIDs(
-        num_platforms,
+        numPlatforms,
         platforms,
         nullptr
     );
-    if (!process_cl_call_status("clGetPlatformIDs", success))
+    if (!processClCallStatus("clGetPlatformIDs", success))
     {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
+        freePointers(mallocedPointers, allignedMallocedPointers);
         // In debug its nice to hit an assert so that we stop and 
         // can see what are the things that were sent in to break it.
         assert(false);
         return -1;
     }
 
-    cl_platform_id chosen_platform = nullptr;
-    cl_device_id* chosen_devices = nullptr;
-    cl_uint num_chosen_devices = -1;
+    cl_platform_id chosenPlatform = nullptr;
+    cl_device_id* chosenDevices = nullptr;
+    cl_uint numChosenDevices = -1;
 
-    for (cl_uint platform_index = 0; platform_index < num_platforms; platform_index++)
+    for (cl_uint platformIndex = 0; platformIndex < numPlatforms; platformIndex++)
     {
-        size_t param_value_size;
+        size_t paramValueSize;
 
         // Get the size of the name of the platform.
         success = clGetPlatformInfo(
-            platforms[platform_index],
+            platforms[platformIndex],
             CL_PLATFORM_NAME,
             0,
             nullptr,
-            &param_value_size
+            &paramValueSize
         );
-        if (!process_cl_call_status("clGetPlatformInfo", success))
+        if (!processClCallStatus("clGetPlatformInfo", success))
         {
-            free_pointers(malloced_pointers, alligned_malloced_pointers);
+            freePointers(mallocedPointers, allignedMallocedPointers);
             // In debug its nice to hit an assert so that we stop and 
             // can see what are the things that were sent in to break it.
             assert(false);
             return -1;
         }
 
-        const auto platform_name = static_cast<char*>(malloc(sizeof(char) * param_value_size));
-        malloced_pointers.push_back(platform_name);
+        const auto platformName = static_cast<char*>(malloc(sizeof(char) * paramValueSize));
+        mallocedPointers.push_back(platformName);
 
         success = clGetPlatformInfo(
-            platforms[platform_index],
+            platforms[platformIndex],
             CL_PLATFORM_NAME,
-            param_value_size,
-            platform_name,
+            paramValueSize,
+            platformName,
             nullptr
         );
-        if (!process_cl_call_status("clGetPlatformInfo", success))
+        if (!processClCallStatus("clGetPlatformInfo", success))
         {
-            free_pointers(malloced_pointers, alligned_malloced_pointers);
+            freePointers(mallocedPointers, allignedMallocedPointers);
             // In debug its nice to hit an assert so that we stop and 
             // can see what are the things that were sent in to break it.
             assert(false);
             return -1;
         }
 
-        auto plat_name = std::string(platform_name) + std::string("\n");
-        printf("Platform: %s\n", plat_name.c_str());
+        auto platName = std::string(platformName) + std::string("\n");
+        printf("Platform: %s\n", platName.c_str());
 
-        if (platform_name != platform_name_to_use)
+        if (platformName != PLATFORM_NAME_TO_USE)
         {
             printf("Skipping unwanted platform.\n\n");
             continue;
         }
 
-        cl_uint num_devices;
+        cl_uint numDevices;
 
         // Get the number of devices
         success = clGetDeviceIDs(
-            platforms[platform_index],
+            platforms[platformIndex],
             CL_DEVICE_TYPE_GPU,
             0,
             nullptr,
-            &num_devices
+            &numDevices
         );
         // Their is an issue where the CPU only experimental build will fail, just skip that one.
         if (success == -1)
         {
             continue;
         }
-        if (!process_cl_call_status("clGetDeviceIDs", success))
+        if (!processClCallStatus("clGetDeviceIDs", success))
         {
-            free_pointers(malloced_pointers, alligned_malloced_pointers);
+            freePointers(mallocedPointers, allignedMallocedPointers);
             // In debug its nice to hit an assert so that we stop and 
             // can see what are the things that were sent in to break it.
             assert(false);
             return -1;
         }
 
-        cl_device_id* devices = static_cast<cl_device_id*>(malloc(sizeof(cl_device_id) * num_devices));
-        malloced_pointers.push_back(devices);
+        auto devices = static_cast<cl_device_id*>(malloc(sizeof(cl_device_id) * numDevices));
+        mallocedPointers.push_back(devices);
 
         // Get the number of devices
         success = clGetDeviceIDs(
-            platforms[platform_index],
+            platforms[platformIndex],
             CL_DEVICE_TYPE_GPU,
-            num_devices,
+            numDevices,
             devices,
-            &num_devices
+            &numDevices
         );
-        if (!process_cl_call_status("clGetDeviceIDs", success))
+        if (!processClCallStatus("clGetDeviceIDs", success))
         {
-            free_pointers(malloced_pointers, alligned_malloced_pointers);
+            freePointers(mallocedPointers, allignedMallocedPointers);
             // In debug its nice to hit an assert so that we stop and 
             // can see what are the things that were sent in to break it.
             assert(false);
             return -1;
         }
 
-        bool device_taken = false;
+        auto deviceTaken = false;
 
-        for (cl_uint device_index = 0; device_index < num_devices; device_index++)
+        for (cl_uint deviceIndex = 0; deviceIndex < numDevices; deviceIndex++)
         {
             // Get info from the devices
 
             // Get the device name
             success = clGetDeviceInfo(
-                devices[device_index],
+                devices[deviceIndex],
                 CL_DEVICE_NAME,
                 0,
                 nullptr,
-                &param_value_size
+                &paramValueSize
             );
-            if (!process_cl_call_status("clGetDeviceInfo", success))
+            if (!processClCallStatus("clGetDeviceInfo", success))
             {
-                free_pointers(malloced_pointers, alligned_malloced_pointers);
+                freePointers(mallocedPointers, allignedMallocedPointers);
                 // In debug its nice to hit an assert so that we stop and 
                 // can see what are the things that were sent in to break it.
                 assert(false);
                 return -1;
             }
-            const auto device_name = static_cast<char*>(malloc(param_value_size));
-            malloced_pointers.push_back(device_name);
+            const auto deviceName = static_cast<char*>(malloc(paramValueSize));
+            mallocedPointers.push_back(deviceName);
             success = clGetDeviceInfo(
-                devices[device_index],
+                devices[deviceIndex],
                 CL_DEVICE_NAME,
-                param_value_size,
-                device_name,
+                paramValueSize,
+                deviceName,
                 nullptr
             );
-            if (!process_cl_call_status("clGetDeviceInfo", success))
+            if (!processClCallStatus("clGetDeviceInfo", success))
             {
-                free_pointers(malloced_pointers, alligned_malloced_pointers);
+                freePointers(mallocedPointers, allignedMallocedPointers);
                 // In debug its nice to hit an assert so that we stop and 
                 // can see what are the things that were sent in to break it.
                 assert(false);
                 return -1;
             }
-            const std::string device_name_string = device_name;
-            auto dev_name = device_name_string + std::string("\n");
-            printf("%s", dev_name.c_str());
+            const std::string deviceNameString = deviceName;
+            auto devName = deviceNameString + std::string("\n");
+            printf("%s", devName.c_str());
 
-            if (device_name_string == prefered_device_name)
+            if (deviceNameString == PREFERED_DEVICE_NAME)
             {
-                device_taken = true;
+                deviceTaken = true;
             }
 
             // Get the double config
-            cl_device_fp_config fp_config;
+            cl_device_fp_config fpConfig;
             success = clGetDeviceInfo(
-                devices[device_index],
+                devices[deviceIndex],
                 CL_DEVICE_DOUBLE_FP_CONFIG,
                 sizeof(cl_device_fp_config),
-                &fp_config,
+                &fpConfig,
                 nullptr
             );
-            if (!process_cl_call_status("clGetDeviceInfo", success))
+            if (!processClCallStatus("clGetDeviceInfo", success))
             {
-                free_pointers(malloced_pointers, alligned_malloced_pointers);
+                freePointers(mallocedPointers, allignedMallocedPointers);
                 // In debug its nice to hit an assert so that we stop and 
                 // can see what are the things that were sent in to break it.
                 assert(false);
                 return -1;
             }
-            printf("Double FP Config : %X\n", static_cast<int>(fp_config));
+            printf("Double FP Config : %X\n", static_cast<int>(fpConfig));
 
             // Get the preferred vector width float
-            cl_uint prefered_vector_width_float;
+            cl_uint preferedVectorWidthFloat;
             success = clGetDeviceInfo(
-                devices[device_index],
+                devices[deviceIndex],
                 CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT,
                 sizeof(cl_uint),
-                &prefered_vector_width_float,
+                &preferedVectorWidthFloat,
                 nullptr
             );
-            if (!process_cl_call_status("clGetDeviceInfo", success))
+            if (!processClCallStatus("clGetDeviceInfo", success))
             {
-                free_pointers(malloced_pointers, alligned_malloced_pointers);
+                freePointers(mallocedPointers, allignedMallocedPointers);
                 // In debug its nice to hit an assert so that we stop and 
                 // can see what are the things that were sent in to break it.
                 assert(false);
                 return -1;
             }
-            printf("Prefered Vector Width Float : %u\n", prefered_vector_width_float);
+            printf("Prefered Vector Width Float : %u\n", preferedVectorWidthFloat);
 
             // Get the preferred vector width float
-            cl_uint native_vector_width_float;
+            cl_uint nativeVectorWidthFloat;
             success = clGetDeviceInfo(
-                devices[device_index],
+                devices[deviceIndex],
                 CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT,
                 sizeof(cl_uint),
-                &native_vector_width_float,
+                &nativeVectorWidthFloat,
                 nullptr
             );
-            if (!process_cl_call_status("clGetDeviceInfo", success))
+            if (!processClCallStatus("clGetDeviceInfo", success))
             {
-                free_pointers(malloced_pointers, alligned_malloced_pointers);
+                freePointers(mallocedPointers, allignedMallocedPointers);
                 // In debug its nice to hit an assert so that we stop and 
                 // can see what are the things that were sent in to break it.
                 assert(false);
                 return -1;
             }
-            printf("Native Vector Width Float : %u\n", native_vector_width_float);
+            printf("Native Vector Width Float : %u\n", nativeVectorWidthFloat);
 
             // Get the max clock frequency
-            cl_uint max_clock_frequency;
+            cl_uint maxClockFrequency;
             success = clGetDeviceInfo(
-                devices[device_index],
+                devices[deviceIndex],
                 CL_DEVICE_MAX_CLOCK_FREQUENCY,
                 sizeof(cl_uint),
-                &max_clock_frequency,
+                &maxClockFrequency,
                 nullptr
             );
-            if (!process_cl_call_status("clGetDeviceInfo", success))
+            if (!processClCallStatus("clGetDeviceInfo", success))
             {
-                free_pointers(malloced_pointers, alligned_malloced_pointers);
+                freePointers(mallocedPointers, allignedMallocedPointers);
                 // In debug its nice to hit an assert so that we stop and 
                 // can see what are the things that were sent in to break it.
                 assert(false);
                 return -1;
             }
-            printf("Max Clock Frequency : %u\n", max_clock_frequency);
+            printf("Max Clock Frequency : %u\n", maxClockFrequency);
 
             // Get the max compute units
-            cl_uint max_compute_units;
+            cl_uint maxComputeUnits;
             success = clGetDeviceInfo(
-                devices[device_index],
+                devices[deviceIndex],
                 CL_DEVICE_MAX_COMPUTE_UNITS,
                 sizeof(cl_uint),
-                &max_compute_units,
+                &maxComputeUnits,
                 nullptr
             );
-            if (!process_cl_call_status("clGetDeviceInfo", success))
+            if (!processClCallStatus("clGetDeviceInfo", success))
             {
-                free_pointers(malloced_pointers, alligned_malloced_pointers);
+                freePointers(mallocedPointers, allignedMallocedPointers);
                 // In debug its nice to hit an assert so that we stop and 
                 // can see what are the things that were sent in to break it.
                 assert(false);
                 return -1;
             }
-            printf("Max Compute Units : %u\n", max_compute_units);
+            printf("Max Compute Units : %u\n", maxComputeUnits);
 
             // Get the max work item sizes
             success = clGetDeviceInfo(
-                devices[device_index],
+                devices[deviceIndex],
                 CL_DEVICE_MAX_WORK_ITEM_SIZES,
                 0,
                 nullptr,
-                &param_value_size
+                &paramValueSize
             );
-            if (!process_cl_call_status("clGetDeviceInfo", success))
+            if (!processClCallStatus("clGetDeviceInfo", success))
             {
-                free_pointers(malloced_pointers, alligned_malloced_pointers);
+                freePointers(mallocedPointers, allignedMallocedPointers);
                 // In debug its nice to hit an assert so that we stop and 
                 // can see what are the things that were sent in to break it.
                 assert(false);
                 return -1;
             }
-            size_t* max_work_item_sizes = static_cast<size_t*>(malloc(param_value_size));
-            malloced_pointers.push_back(max_work_item_sizes);
+            size_t* maxWorkItemSizes = static_cast<size_t*>(malloc(paramValueSize));
+            mallocedPointers.push_back(maxWorkItemSizes);
             success = clGetDeviceInfo(
-                devices[device_index],
+                devices[deviceIndex],
                 CL_DEVICE_MAX_WORK_ITEM_SIZES,
-                param_value_size,
-                max_work_item_sizes,
+                paramValueSize,
+                maxWorkItemSizes,
                 nullptr
             );
-            if (!process_cl_call_status("clGetDeviceInfo", success))
+            if (!processClCallStatus("clGetDeviceInfo", success))
             {
-                free_pointers(malloced_pointers, alligned_malloced_pointers);
+                freePointers(mallocedPointers, allignedMallocedPointers);
                 // In debug its nice to hit an assert so that we stop and 
                 // can see what are the things that were sent in to break it.
                 assert(false);
                 return -1;
             }
             printf("Max Work Item Sizes:\n");
-            printf("\tMax Work Item Size x : %llu\n", static_cast<uint64_t>(max_work_item_sizes[0]));
-            printf("\tMax Work Item Size y : %llu\n", static_cast<uint64_t>(max_work_item_sizes[1]));
-            printf("\tMax Work Item Size z : %llu\n", static_cast<uint64_t>(max_work_item_sizes[2]));
+            printf("\tMax Work Item Size x : %llu\n", static_cast<uint64_t>(maxWorkItemSizes[0]));
+            printf("\tMax Work Item Size y : %llu\n", static_cast<uint64_t>(maxWorkItemSizes[1]));
+            printf("\tMax Work Item Size z : %llu\n", static_cast<uint64_t>(maxWorkItemSizes[2]));
 
             // clean up the output.
             printf("\n");
 
             // Select the platform & device that we are using by assigning it here.
-            chosen_platform = platforms[platform_index];
-            chosen_devices = devices;
-            num_chosen_devices = num_devices;
+            chosenPlatform = platforms[platformIndex];
+            chosenDevices = devices;
+            numChosenDevices = numDevices;
             // If we have our prefered device, don't keep searching.
-            if (device_taken)
+            if (deviceTaken)
             {
                 printf("Device Found. Stopping Search.\n");
                 break;
@@ -636,53 +647,53 @@ int main(int argc, char** argv)
     }
 
     cl_context_properties properties[3] = {
-        CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(chosen_platform), 0
+        CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(chosenPlatform), 0
     };
 
     // Create the context for our run.
-    const auto chosen_context = clCreateContext(
+    const auto chosenContext = clCreateContext(
         properties,
-        num_chosen_devices,
-        chosen_devices,
+        numChosenDevices,
+        chosenDevices,
         nullptr,
         nullptr,
         &success
     );
-    if (!process_cl_call_status("clCreateContext", success))
+    if (!processClCallStatus("clCreateContext", success))
     {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
+        freePointers(mallocedPointers, allignedMallocedPointers);
         // In debug its nice to hit an assert so that we stop and 
         // can see what are the things that were sent in to break it.
         assert(false);
         return -1;
     }
 
-    size_t blur_kernel_char_size;
+    size_t blurKernelCharSize;
 
-    const auto blur_kernel_string = read_source(blur_kernel_file.c_str(), &blur_kernel_char_size);
+    const auto blurKernelString = read_source(BLUR_KERNEL_FILE.c_str(), &blurKernelCharSize);
 
-    std::string check_string1 = blur_kernel_string;
+    std::string checkString1 = blurKernelString;
 
-    assert(blur_kernel_string);
+    assert(blurKernelString);
 
     // The strings array is filled with the two null terminated strings.
-    const char* strings[] = {blur_kernel_string};
+    const char* strings[] = {blurKernelString};
     // Because the strings are null terminated, we pass in 0.
     const size_t lengths[] = {0};
 
-    malloced_pointers.push_back(blur_kernel_string);
+    mallocedPointers.push_back(blurKernelString);
 
     // Create the program
-    const auto chosen_program = clCreateProgramWithSource(
-        chosen_context,
+    const auto chosenProgram = clCreateProgramWithSource(
+        chosenContext,
         1,
         strings,
         lengths,
         &success
     );
-    if (!process_cl_call_status("clCreateProgramWithSource", success))
+    if (!processClCallStatus("clCreateProgramWithSource", success))
     {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
+        freePointers(mallocedPointers, allignedMallocedPointers);
         // In debug its nice to hit an assert so that we stop and 
         // can see what are the things that were sent in to break it.
         assert(false);
@@ -691,30 +702,30 @@ int main(int argc, char** argv)
 
     // Build the program
     success = clBuildProgram(
-        chosen_program,
-        num_chosen_devices,
-        chosen_devices,
+        chosenProgram,
+        numChosenDevices,
+        chosenDevices,
         "-cl-std=CL2.0",
         nullptr,
         nullptr
     );
-    if (!process_cl_call_status("clBuildProgram", success))
+    if (!processClCallStatus("clBuildProgram", success))
     {
         // Get detailed build errors when they occur.
-        size_t build_error_log_size;
-        clGetProgramBuildInfo(chosen_program, chosen_devices[0], CL_PROGRAM_BUILD_LOG, 0, nullptr,
-            &build_error_log_size);
+        size_t buildErrorLogSize;
+        clGetProgramBuildInfo(chosenProgram, chosenDevices[0], CL_PROGRAM_BUILD_LOG, 0, nullptr,
+            &buildErrorLogSize);
 
-        char* build_error = static_cast<char*>(malloc(sizeof(char) * build_error_log_size));
-        malloced_pointers.push_back(build_error);
+        auto buildError = static_cast<char*>(malloc(sizeof(char) * buildErrorLogSize));
+        mallocedPointers.push_back(buildError);
 
-        clGetProgramBuildInfo(chosen_program, chosen_devices[0], CL_PROGRAM_BUILD_LOG, build_error_log_size,
-            build_error, nullptr);
+        clGetProgramBuildInfo(chosenProgram, chosenDevices[0], CL_PROGRAM_BUILD_LOG, buildErrorLogSize,
+            buildError, nullptr);
 
-        std::string error_string = build_error;
-        printf("%s\n", error_string.c_str());
+        std::string errorString = buildError;
+        printf("%s\n", errorString.c_str());
 
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
+        freePointers(mallocedPointers, allignedMallocedPointers);
         // In debug its nice to hit an assert so that we stop and 
         // can see what are the things that were sent in to break it.
         assert(false);
@@ -724,15 +735,15 @@ int main(int argc, char** argv)
     //cl_queue_properties queue_properties[3] = {CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0};
 
     // Create the command queue
-    const auto chosen_command_queue = clCreateCommandQueueWithProperties(
-        chosen_context,
-        chosen_devices[0],
+    const auto chosenCommandQueue = clCreateCommandQueueWithProperties(
+        chosenContext,
+        chosenDevices[0],
         nullptr, //queue_properties,
         &success
     );
-    if (!process_cl_call_status("clCreateCommandQueueWithProperties", success))
+    if (!processClCallStatus("clCreateCommandQueueWithProperties", success))
     {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
+        freePointers(mallocedPointers, allignedMallocedPointers);
         // In debug its nice to hit an assert so that we stop and 
         // can see what are the things that were sent in to break it.
         assert(false);
@@ -740,57 +751,58 @@ int main(int argc, char** argv)
     }
 
     // Create the naive Kernel
-    const auto blur_kernel = clCreateKernel(
-        chosen_program,
-        conv_filter_kernel_name.c_str(),
+    const auto blurKernel = clCreateKernel(
+        chosenProgram,
+        CONV_FILTER_KERNEL_NAME.c_str(),
         &success
     );
-    if (!process_cl_call_status("clCreateKernel", success))
+    if (!processClCallStatus("clCreateKernel", success))
     {
-        free_pointers(malloced_pointers, alligned_malloced_pointers);
+        freePointers(mallocedPointers, allignedMallocedPointers);
         // In debug its nice to hit an assert so that we stop and 
         // can see what are the things that were sent in to break it.
         assert(false);
         return -1;
     }
 
-    std::map<std::string, std::pair<double, double>> results_outputs;
+    std::map<std::string, std::pair<double, double>> resultsOutputs;
 
-    for (const auto& lena_file : lena_files)
+    for (const auto& lenaFile : LENA_FILES)
     {
-        for (const auto& filter_size : filter_sizes)
+        for (const auto& filterSize : FILTER_SIZES)
         {
-            for (const auto& filter_sigma2 : filter_sigma2s)
+            for (auto filterQueue = 0; filterQueue < FILTER_SIGMA2_S.size(); ++filterQueue)
             {
-                const cl_mem_flags lena_input_image_flags = CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY;
-                const cl_mem_flags lena_output_image_flags = CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY;
+                auto filterSigma2 = FILTER_SIGMA2_S[filterQueue];
+                const cl_mem_flags lenaInputImageFlags = CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY;
+                const cl_mem_flags lenaOutputImageFlags = CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY;
 
                 // Assign variables
                 // Blur Kernel
 
                 // Arg 0 - __read_only image2d_t inputImg
-                int32_t lena_x;
-                int32_t lena_y;
-                int32_t lena_num_channels;
-                auto lena_data = static_cast<uint8_t*>(stbi_load(lena_file.c_str(), &lena_x, &lena_y, &lena_num_channels, 0));
-                assert(lena_data);
+                int32_t lenaX;
+                int32_t lenaY;
+                int32_t lenaNumChannels;
+                auto lenaData = static_cast<uint8_t*>(stbi_load(lenaFile.c_str(), &lenaX, &lenaY, &lenaNumChannels, 0));
+                assert(lenaData);
 
-                cl_image_format lena_image_format;
-                lena_image_format.image_channel_data_type = CL_UNSIGNED_INT8;
-                switch (lena_num_channels)
+                cl_image_format lenaImageFormat;
+                lenaImageFormat.image_channel_data_type = CL_UNSIGNED_INT8;
+                switch (lenaNumChannels)
                 {
                 case 1:
-                    lena_image_format.image_channel_order = CL_R;
+                    lenaImageFormat.image_channel_order = CL_R;
                     break;
                 case 2:
-                    lena_image_format.image_channel_order = CL_RA;
+                    lenaImageFormat.image_channel_order = CL_RA;
                     break;
                 case 3:
                     // My board does not support 3 channels of data, so I just add a 4th A channel with its value set to 255.
-                    lena_data = convert_3_to_4_channel(lena_data, lena_x * lena_y);
-                    lena_num_channels = 4;
+                    lenaData = convert3To4Channel(lenaData, lenaX * lenaY);
+                    lenaNumChannels = 4;
                 case 4:
-                    lena_image_format.image_channel_order = CL_RGBA;
+                    lenaImageFormat.image_channel_order = CL_RGBA;
                     break;
                 default:
                     assert(false);
@@ -798,31 +810,31 @@ int main(int argc, char** argv)
                 }
 
                 // lena_data pointer may be swapped out in the case of 3 channels of data.
-                malloced_pointers.push_back(lena_data);
+                mallocedPointers.push_back(lenaData);
 
-                cl_image_desc lena_image_desc;
-                lena_image_desc.image_type = CL_MEM_OBJECT_IMAGE2D;
-                lena_image_desc.image_width = lena_x;
-                lena_image_desc.image_height = lena_y;
-                lena_image_desc.image_depth = 0;
-                lena_image_desc.image_array_size = 0;
-                lena_image_desc.image_row_pitch = 0;
-                lena_image_desc.image_slice_pitch = 0;
-                lena_image_desc.num_mip_levels = 0;
-                lena_image_desc.num_samples = 0;
-                lena_image_desc.mem_object = nullptr;
+                cl_image_desc lenaImageDesc;
+                lenaImageDesc.image_type = CL_MEM_OBJECT_IMAGE2D;
+                lenaImageDesc.image_width = lenaX;
+                lenaImageDesc.image_height = lenaY;
+                lenaImageDesc.image_depth = 0;
+                lenaImageDesc.image_array_size = 0;
+                lenaImageDesc.image_row_pitch = 0;
+                lenaImageDesc.image_slice_pitch = 0;
+                lenaImageDesc.num_mip_levels = 0;
+                lenaImageDesc.num_samples = 0;
+                lenaImageDesc.mem_object = nullptr;
 
-                auto lena_image_mem = clCreateImage(
-                    chosen_context,
-                    lena_input_image_flags,
-                    &lena_image_format,
-                    &lena_image_desc,
-                    lena_data,
+                auto lenaImageMem = clCreateImage(
+                    chosenContext,
+                    lenaInputImageFlags,
+                    &lenaImageFormat,
+                    &lenaImageDesc,
+                    lenaData,
                     &success
                 );
-                if (!process_cl_call_status("clCreateImage", success))
+                if (!processClCallStatus("clCreateImage", success))
                 {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    freePointers(mallocedPointers, allignedMallocedPointers);
                     // In debug its nice to hit an assert so that we stop and 
                     // can see what are the things that were sent in to break it.
                     assert(false);
@@ -830,14 +842,14 @@ int main(int argc, char** argv)
                 }
 
                 success = clSetKernelArg(
-                    blur_kernel,
+                    blurKernel,
                     0,
-                    sizeof lena_image_mem,
-                    &lena_image_mem
+                    sizeof lenaImageMem,
+                    &lenaImageMem
                 );
-                if (!process_cl_call_status("clSetKernelArg", success))
+                if (!processClCallStatus("clSetKernelArg", success))
                 {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    freePointers(mallocedPointers, allignedMallocedPointers);
                     // In debug its nice to hit an assert so that we stop and 
                     // can see what are the things that were sent in to break it.
                     assert(false);
@@ -845,21 +857,21 @@ int main(int argc, char** argv)
                 }
 
                 // Arg1 - __write_only image2d_t outputImg,
-                const auto lena_output_data = malloc(sizeof(char) * lena_x * lena_y * lena_num_channels);
-                malloced_pointers.push_back(lena_output_data);
-                assert(lena_data);
+                const auto lenaOutputData = malloc(sizeof(char) * lenaX * lenaY * lenaNumChannels);
+                mallocedPointers.push_back(lenaOutputData);
+                assert(lenaData);
 
-                auto lena_output_image_mem = clCreateImage(
-                    chosen_context,
-                    lena_output_image_flags,
-                    &lena_image_format,
-                    &lena_image_desc,
-                    lena_data,
+                auto lenaOutputImageMem = clCreateImage(
+                    chosenContext,
+                    lenaOutputImageFlags,
+                    &lenaImageFormat,
+                    &lenaImageDesc,
+                    lenaData,
                     &success
                 );
-                if (!process_cl_call_status("clCreateImage", success))
+                if (!processClCallStatus("clCreateImage", success))
                 {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    freePointers(mallocedPointers, allignedMallocedPointers);
                     // In debug its nice to hit an assert so that we stop and 
                     // can see what are the things that were sent in to break it.
                     assert(false);
@@ -867,14 +879,14 @@ int main(int argc, char** argv)
                 }
 
                 success = clSetKernelArg(
-                    blur_kernel,
+                    blurKernel,
                     1,
-                    sizeof lena_output_image_mem,
-                    &lena_output_image_mem
+                    sizeof lenaOutputImageMem,
+                    &lenaOutputImageMem
                 );
-                if (!process_cl_call_status("clSetKernelArg", success))
+                if (!processClCallStatus("clSetKernelArg", success))
                 {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    freePointers(mallocedPointers, allignedMallocedPointers);
                     // In debug its nice to hit an assert so that we stop and 
                     // can see what are the things that were sent in to break it.
                     assert(false);
@@ -883,21 +895,21 @@ int main(int argc, char** argv)
 
                 // Arg2 - sampler_t sampler
 
-                cl_sampler_properties lena_sampler_properties[] = {
+                cl_sampler_properties lenaSamplerProperties[] = {
                     CL_SAMPLER_NORMALIZED_COORDS, false,
                     CL_SAMPLER_ADDRESSING_MODE, CL_ADDRESS_CLAMP_TO_EDGE,
                     CL_SAMPLER_FILTER_MODE, CL_FILTER_NEAREST, 0
                 };
 
-                auto lena_sampler = clCreateSamplerWithProperties(
-                    chosen_context,
-                    lena_sampler_properties,
+                auto lenaSampler = clCreateSamplerWithProperties(
+                    chosenContext,
+                    lenaSamplerProperties,
                     &success
                 );
 
-                if (!process_cl_call_status("clCreateSamplerWithProperties", success))
+                if (!processClCallStatus("clCreateSamplerWithProperties", success))
                 {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    freePointers(mallocedPointers, allignedMallocedPointers);
                     // In debug its nice to hit an assert so that we stop and 
                     // can see what are the things that were sent in to break it.
                     assert(false);
@@ -905,14 +917,14 @@ int main(int argc, char** argv)
                 }
 
                 success = clSetKernelArg(
-                    blur_kernel,
+                    blurKernel,
                     2,
-                    sizeof lena_sampler,
-                    &lena_sampler
+                    sizeof lenaSampler,
+                    &lenaSampler
                 );
-                if (!process_cl_call_status("clSetKernelArg", success))
+                if (!processClCallStatus("clSetKernelArg", success))
                 {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    freePointers(mallocedPointers, allignedMallocedPointers);
                     // In debug its nice to hit an assert so that we stop and 
                     // can see what are the things that were sent in to break it.
                     assert(false);
@@ -922,18 +934,18 @@ int main(int argc, char** argv)
                 // Arg 3 - __global float* filter
 
                 // Get a vector of all the filter coefs.
-                auto blur_filter = generate_gauss_blur(filter_size, filter_sigma2);
+                auto blurFilter = generate_gauss_blur(filterSize, filterSigma2);
 
-                auto blur_filter_mem = clCreateBuffer(
-                    chosen_context,
+                auto blurFilterMem = clCreateBuffer(
+                    chosenContext,
                     CL_MEM_USE_HOST_PTR,
-                    sizeof(float) * blur_filter.size(),
-                    blur_filter.data(),
+                    sizeof(float) * blurFilter.size(),
+                    blurFilter.data(),
                     &success
                 );
-                if (!process_cl_call_status("clCreateBuffer", success))
+                if (!processClCallStatus("clCreateBuffer", success))
                 {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    freePointers(mallocedPointers, allignedMallocedPointers);
                     // In debug its nice to hit an assert so that we stop and 
                     // can see what are the things that were sent in to break it.
                     assert(false);
@@ -941,14 +953,14 @@ int main(int argc, char** argv)
                 }
 
                 success = clSetKernelArg(
-                    blur_kernel,
+                    blurKernel,
                     3,
-                    sizeof blur_filter_mem,
-                    &blur_filter_mem
+                    sizeof blurFilterMem,
+                    &blurFilterMem
                 );
-                if (!process_cl_call_status("clSetKernelArg", success))
+                if (!processClCallStatus("clSetKernelArg", success))
                 {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    freePointers(mallocedPointers, allignedMallocedPointers);
                     // In debug its nice to hit an assert so that we stop and 
                     // can see what are the things that were sent in to break it.
                     assert(false);
@@ -958,14 +970,14 @@ int main(int argc, char** argv)
                 // Arg 4 - const int filterWidth
 
                 success = clSetKernelArg(
-                    blur_kernel,
+                    blurKernel,
                     4,
-                    sizeof filter_size,
-                    &filter_size
+                    sizeof filterSize,
+                    &filterSize
                 );
-                if (!process_cl_call_status("clSetKernelArg", success))
+                if (!processClCallStatus("clSetKernelArg", success))
                 {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
+                    freePointers(mallocedPointers, allignedMallocedPointers);
                     // In debug its nice to hit an assert so that we stop and 
                     // can see what are the things that were sent in to break it.
                     assert(false);
@@ -973,31 +985,34 @@ int main(int argc, char** argv)
                 }
 
                 // Enque the kernel
-                size_t global_work_offset[] = {0, 0, 0};
-                size_t global_work_size[] = {lena_x, lena_y, 0};
-                size_t local_work_size[] = {1, 1, 0};
+                size_t globalWorkOffset[] = {0, 0, 0};
+                size_t globalWorkSize[] = {lenaX, lenaY, 0};
+                size_t localWorkSize[] = {1, 1, 0};
 
                 // Get the maps ready for timing
-                std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lena_time_captures_enque;
-                std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lena_time_captures_finish;
+                std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesEnque;
+                std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesFinish;
 
-                LARGE_INTEGER start_time, finish_time;
+                LARGE_INTEGER startTime, finishTime;
 
-                const auto run_name_base = "Lena_" + std::to_string(lena_x) + "x" + std::to_string(lena_y) + "_filt_" + std::to_string(filter_size) + "_sig2_" + std::to_string(filter_sigma2);
+                const auto runNameBase = "Lena_" + std::to_string(lenaX) + "x" + std::to_string(lenaY) + "_filt_" + std::to_string(filterSize) + "_sig2_" + std::to_string(filterSigma2);
 
-                printf("Starting run timing for %d iterations on %s\n", kernel_iterations, run_name_base.c_str());
-                for (uint32_t i = 0; i < kernel_iterations; ++i)
+                printf("Starting run timing for %d iterations on %s\n", KERNEL_ITERATIONS, runNameBase.c_str());
+
+                auto imagePrinted = false;
+
+                for (uint32_t i = 0; i < KERNEL_ITERATIONS; ++i)
                 {
                     // Do the captures for the enque time
-                    QueryPerformanceCounter(&start_time);
+                    QueryPerformanceCounter(&startTime);
 
                     success = clEnqueueNDRangeKernel(
-                        chosen_command_queue,
-                        blur_kernel,
+                        chosenCommandQueue,
+                        blurKernel,
                         2,
-                        global_work_offset,
-                        global_work_size,
-                        local_work_size,
+                        globalWorkOffset,
+                        globalWorkSize,
+                        localWorkSize,
                         0,
                         nullptr,
                         nullptr
@@ -1013,10 +1028,10 @@ int main(int argc, char** argv)
                     }
                     */
 
-                    QueryPerformanceCounter(&finish_time);
+                    QueryPerformanceCounter(&finishTime);
 
                     // Wait for the kernel to finish
-                    success = clFinish(chosen_command_queue);
+                    success = clFinish(chosenCommandQueue);
                     /*
                     if (!process_cl_call_status("clFinish", success))
                     {
@@ -1028,18 +1043,19 @@ int main(int argc, char** argv)
                     }
                     */
 
-                    lena_time_captures_enque.emplace_back(start_time, finish_time);
+                    // Sometimes we have to keep running the kernel to get a good picture.
+                    lenaTimeCapturesEnque.emplace_back(startTime, finishTime);
 
                     //Do the captures for the finish time
-                    QueryPerformanceCounter(&start_time);
+                    QueryPerformanceCounter(&startTime);
 
                     success = clEnqueueNDRangeKernel(
-                        chosen_command_queue,
-                        blur_kernel,
+                        chosenCommandQueue,
+                        blurKernel,
                         2,
-                        global_work_offset,
-                        global_work_size,
-                        local_work_size,
+                        globalWorkOffset,
+                        globalWorkSize,
+                        localWorkSize,
                         0,
                         nullptr,
                         nullptr
@@ -1058,7 +1074,7 @@ int main(int argc, char** argv)
                     //QueryPerformanceCounter(&finish_time);
 
                     // Wait for the kernel to finish
-                    success = clFinish(chosen_command_queue);
+                    success = clFinish(chosenCommandQueue);
                     /*
                     if (!process_cl_call_status("clFinish", success))
                     {
@@ -1070,82 +1086,103 @@ int main(int argc, char** argv)
                     }
                     */
 
-                    QueryPerformanceCounter(&finish_time);
+                    QueryPerformanceCounter(&finishTime);
 
-                    lena_time_captures_finish.emplace_back(start_time, finish_time);
+
+                    // Sometimes we have to keep running the kernel to get a good picture.
+
+                    lenaTimeCapturesFinish.emplace_back(startTime, finishTime);
+
+                    if (!imagePrinted)
+                    {
+                        // Get the image back out of the device.
+                        size_t origin[] = { 0, 0, 0 };
+                        size_t region[] = { lenaX, lenaY, 1 };
+                        size_t rowPitch = 0;
+                        size_t slicePitch = 0;
+
+                        const auto lenaOutputImageData = clEnqueueMapImage(
+                            chosenCommandQueue,
+                            lenaOutputImageMem,
+                            true,
+                            CL_MAP_READ,
+                            origin,
+                            region,
+                            &rowPitch,
+                            &slicePitch,
+                            0,
+                            nullptr,
+                            nullptr,
+                            &success
+                        );
+                        if (!processClCallStatus("clEnqueueMapImage", success))
+                        {
+                            freePointers(mallocedPointers, allignedMallocedPointers);
+                            // In debug its nice to hit an assert so that we stop and
+                            // can see what are the things that were sent in to break it.
+                            assert(false);
+                            return -1;
+                        }
+
+                        const auto runNamePrint = OUTPUT_DIRECTORY + runNameBase + "_image.png";
+
+                        success = stbi_write_png(runNamePrint.c_str(), lenaX, lenaY, lenaNumChannels, lenaOutputImageData, sizeof(char) * lenaX * lenaNumChannels);
+                        assert(success);
+
+                        success = clEnqueueUnmapMemObject(
+                            chosenCommandQueue,
+                            lenaOutputImageMem,
+                            lenaOutputImageData,
+                            0,
+                            nullptr,
+                            nullptr
+                        );
+                        if (!processClCallStatus("clEnqueueUnmapMemObject", success))
+                        {
+                            freePointers(mallocedPointers, allignedMallocedPointers);
+                            // In debug its nice to hit an assert so that we stop and
+                            // can see what are the things that were sent in to break it.
+                            assert(false);
+                            return -1;
+                        }
+
+                        const auto imageSize = getFileSize(runNamePrint);
+
+                        // If the image size is too small, we will have a trash image, remake all the data and try to run it again.
+                        if (imageSize < BAD_RESULTS_IMAGE_SIZE)
+                        {
+                            filterQueue--;
+                            printf("Image Creation failed. Restarting filter run.\n");
+                            break;
+                        }
+
+                        imagePrinted = true;
+                    }
                 }
 
-                // Get the image back out of the device.
-
-                size_t origin[] = {0, 0, 0};
-                size_t region[] = {lena_x, lena_y, 1};
-                size_t row_pitch = 0;
-                size_t slice_pitch = 0;
-
-                const auto lena_output_image_data = clEnqueueMapImage(
-                    chosen_command_queue,
-                    lena_output_image_mem,
-                    true,
-                    CL_MAP_READ,
-                    origin,
-                    region,
-                    &row_pitch,
-                    &slice_pitch,
-                    0,
-                    nullptr,
-                    nullptr,
-                    &success
-                );
-                if (!process_cl_call_status("clEnqueueMapImage", success))
-                {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
-                    // In debug its nice to hit an assert so that we stop and
-                    // can see what are the things that were sent in to break it.
-                    assert(false);
-                    return -1;
-                }
 
                 printf("finished timing.\nPrinting results\n\n");
 
-                const auto run_name_enque = run_name_base + "_enque_times";
-                const auto run_name_finish = run_name_base + "_finish_times";
-                const auto run_name_results = run_name_base + "_results.txt";
-                const auto run_name_print = output_directory + run_name_base + "_image.png";
+                const auto runNameEnque = runNameBase + "_enque_times";
+                const auto runNameFinish = runNameBase + "_finish_times";
+                const auto runNameResults = runNameBase + "_results.txt";
 
-                const auto lena_enque_results = print_results(lena_time_captures_enque, run_name_enque);
-                const auto lena_finish_results = print_results(lena_time_captures_finish, run_name_finish);
+                const auto lenaEnqueResults = printResults(lenaTimeCapturesEnque, runNameEnque);
+                const auto lenaFinishResults = printResults(lenaTimeCapturesFinish, runNameFinish);
 
-                results_outputs[run_name_enque] = lena_enque_results;
-                results_outputs[run_name_finish] = lena_finish_results;
+                resultsOutputs[runNameEnque] = lenaEnqueResults;
+                resultsOutputs[runNameFinish] = lenaFinishResults;
 
-                success = stbi_write_png(run_name_print.c_str(), lena_x, lena_y, lena_num_channels, lena_output_image_data, sizeof(char) * lena_x * lena_num_channels);
-                assert(success);
-
-                success = clEnqueueUnmapMemObject(
-                    chosen_command_queue,
-                    lena_output_image_mem,
-                    lena_output_image_data,
-                    0,
-                    nullptr,
-                    nullptr
-                );
-                if (!process_cl_call_status("clEnqueueUnmapMemObject", success))
-                {
-                    free_pointers(malloced_pointers, alligned_malloced_pointers);
-                    // In debug its nice to hit an assert so that we stop and
-                    // can see what are the things that were sent in to break it.
-                    assert(false);
-                    return -1;
-                }
+                
             }
         }
     }
 
     std::ofstream myfile;
 
-    myfile.open(output_directory + "results.txt", std::ios::out);
+    myfile.open(OUTPUT_DIRECTORY + "results.txt", std::ios::out);
 
-    for (const auto& run : results_outputs)
+    for (const auto& run : resultsOutputs)
     {
         myfile << run.first << ": Average = " << run.second.first << "ms; Standard Deviation = " <<
             run.second.second << std::endl;
@@ -1153,6 +1190,6 @@ int main(int argc, char** argv)
 
     myfile.close();
 
-    free_pointers(malloced_pointers, alligned_malloced_pointers);
+    freePointers(mallocedPointers, allignedMallocedPointers);
     return 0;
 }

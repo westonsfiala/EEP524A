@@ -16,18 +16,22 @@
 #include "stb_image_write.h"
 #include "GenerateCoef.h"
 #include <map>
+#include <algorithm>
 
 #define DONT_PRINT_CALL_SUCCESSES
 
 // What platform and device to use.
 const static std::string PLATFORM_NAME_TO_USE = "Intel(R) OpenCL";
-const static std::string PREFERED_DEVICE_NAME = "Intel(R) UHD Graphics 620";
 
 /*************************************************************************
  * CHANGE THE FOLLOWING LINES TO WHERE EVER YOU HAVE EVERYTHING MAPPED TO.
  *************************************************************************/
 //Set the output directories that need to be used.
 static const std::string BASE_DIRECTORY = "C:/work/GitHub/EEP524A/Homeworks/Homework4/";
+
+const static std::string PREFERED_DEVICE_NAME = "Intel(R) UHD Graphics 620";
+//const static std::string PREFERED_DEVICE_NAME = "Intel(R) HD Graphics 530";
+
 static const std::string OUTPUT_DIRECTORY = BASE_DIRECTORY + "Outputs/";
 static const std::string SRC_DIRECTORY = BASE_DIRECTORY + "src/";
 static const std::string BLUR_KERNEL_FILE = SRC_DIRECTORY + "Blur_Kernel.cl";
@@ -771,8 +775,8 @@ int main(int argc, char** argv)
             for (auto filterQueue = 0; filterQueue < FILTER_SIGMA2_S.size(); ++filterQueue)
             {
                 auto filterSigma2 = FILTER_SIGMA2_S[filterQueue];
-                const cl_mem_flags lenaInputImageFlags = CL_MEM_USE_HOST_PTR | CL_MEM_READ_ONLY;
-                const cl_mem_flags lenaOutputImageFlags = CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY;
+                const cl_mem_flags lenaInputImageFlags = CL_MEM_READ_ONLY;
+                const cl_mem_flags lenaOutputImageFlags = CL_MEM_WRITE_ONLY;
 
                 // Assign variables
                 // Blur Kernel
@@ -828,10 +832,36 @@ int main(int argc, char** argv)
                     lenaInputImageFlags,
                     &lenaImageFormat,
                     &lenaImageDesc,
-                    lenaData,
+                    nullptr,
                     &success
                 );
                 if (!processClCallStatus("clCreateImage", success))
+                {
+                    freePointers(mallocedPointers, allignedMallocedPointers);
+                    // In debug its nice to hit an assert so that we stop and 
+                    // can see what are the things that were sent in to break it.
+                    assert(false);
+                    return -1;
+                }
+
+                // copy host data to device
+                size_t lenaOrigin[] = { 0, 0, 0 };
+                size_t lenaRegion[] = { lenaX, lenaY, 1 };
+
+                success = clEnqueueWriteImage(
+                    chosenCommandQueue,
+                    lenaImageMem,
+                    true,
+                    lenaOrigin,
+                    lenaRegion,
+                    0,
+                    0,
+                    lenaData,
+                    0,
+                    nullptr,
+                    nullptr
+                );
+                if (!processClCallStatus("clEnqueueWriteImage", success))
                 {
                     freePointers(mallocedPointers, allignedMallocedPointers);
                     // In debug its nice to hit an assert so that we stop and 
@@ -865,7 +895,7 @@ int main(int argc, char** argv)
                     lenaOutputImageFlags,
                     &lenaImageFormat,
                     &lenaImageDesc,
-                    lenaData,
+                    nullptr,
                     &success
                 );
                 if (!processClCallStatus("clCreateImage", success))
@@ -986,9 +1016,10 @@ int main(int argc, char** argv)
                 // Enque the kernel
                 size_t globalWorkOffset[] = {0, 0, 0};
                 size_t globalWorkSize[] = {lenaX, lenaY, 0};
-                size_t localWorkSize[] = {1, 1, 0};
+                size_t localWorkSize[] = {32, 2, 0};
 
                 // Get the maps ready for timing
+                std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesSerial;
                 std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesEnque;
                 std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesFinish;
 
@@ -1002,6 +1033,74 @@ int main(int argc, char** argv)
 
                 for (uint32_t i = 0; i < KERNEL_ITERATIONS; ++i)
                 {
+
+                    // Do the captures for the enque time
+                    QueryPerformanceCounter(&startTime);
+
+                    for(uint32_t xIndex = 0; xIndex < lenaX; ++xIndex)
+                    {
+                        for(uint32_t yIndex = 0; yIndex < lenaY; ++yIndex)
+                        {
+                            // Get the lower filter size.
+                            const auto halfWidth = static_cast<int>(filterSize / 2);
+
+                            // initialize the sum.
+                            float sum[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+                            // We never want to mess with the A channel.
+                            const auto numChannels = std::min<uint8_t>(lenaNumChannels, 3);
+
+                            // filter kernel passed in as linearized buffer array
+                            uint32_t filtIdx = 0; 
+                            for (auto filterXIndex = -halfWidth; filterXIndex <= halfWidth; filterXIndex++) // iterate filter rows
+                            {
+                                // Don't calculate this more than we need it.
+                                const auto imageXIndex = std::min<uint32_t>(std::max<uint32_t>(xIndex + filterXIndex, 0), lenaX);
+
+                                for (auto filterYIndex = -halfWidth; filterYIndex <= halfWidth; filterYIndex++) // iterate filter cols
+                                {
+                                    // Get the x & y indexes into the image.
+                                    // Need to do the min max stuff so that we don't index out of the image.
+                                    const auto imageYIndex = std::min<uint32_t>(std::max<uint32_t>(yIndex + filterYIndex, 0), lenaY);
+
+                                    // Get the filter value.
+                                    const auto filterValue = blurFilter[filtIdx];
+
+                                    // Get the pixel data.
+                                    const auto imageIndex = (imageYIndex*lenaX + imageXIndex) * lenaNumChannels;
+
+                                    // Go over all the channels that we have.
+                                    for(auto channelNum = 0; channelNum < numChannels; ++channelNum)
+                                    {
+                                        sum[channelNum] += lenaData[imageIndex + channelNum] * filterValue;
+                                    }
+
+                                    filtIdx++;
+                                }
+                            }
+
+                            const auto imageIndex = yIndex * lenaX + xIndex;
+                            // Go over all the channels that we have.
+                            for (auto channelNum = 0; channelNum < numChannels; ++channelNum)
+                            {
+                                // Never mess with the A channel.
+                                if(channelNum == 3)
+                                {
+                                    static_cast<char*>(lenaOutputData)[imageIndex + channelNum] = sum[channelNum];
+                                }
+                                else
+                                {
+                                    static_cast<char*>(lenaOutputData)[imageIndex + channelNum] = lenaData[imageIndex + channelNum];
+                                }
+                            }
+                        }
+                    }
+
+                    QueryPerformanceCounter(&finishTime);
+
+                    // push back the serial times.
+                    lenaTimeCapturesSerial.emplace_back(startTime, finishTime);
+
                     // Do the captures for the enque time
                     QueryPerformanceCounter(&startTime);
 
@@ -1087,7 +1186,6 @@ int main(int argc, char** argv)
 
                     QueryPerformanceCounter(&finishTime);
 
-
                     // Sometimes we have to keep running the kernel to get a good picture.
 
                     lenaTimeCapturesFinish.emplace_back(startTime, finishTime);
@@ -1095,26 +1193,21 @@ int main(int argc, char** argv)
                     if (!imagePrinted)
                     {
                         // Get the image back out of the device.
-                        size_t origin[] = { 0, 0, 0 };
-                        size_t region[] = { lenaX, lenaY, 1 };
-                        size_t rowPitch = 0;
-                        size_t slicePitch = 0;
 
-                        const auto lenaOutputImageData = clEnqueueMapImage(
+                        success = clEnqueueReadImage(
                             chosenCommandQueue,
                             lenaOutputImageMem,
                             true,
-                            CL_MAP_READ,
-                            origin,
-                            region,
-                            &rowPitch,
-                            &slicePitch,
+                            lenaOrigin,
+                            lenaRegion,
+                            0,
+                            0,
+                            lenaOutputData,
                             0,
                             nullptr,
-                            nullptr,
-                            &success
+                            nullptr
                         );
-                        if (!processClCallStatus("clEnqueueMapImage", success))
+                        if (!processClCallStatus("clEnqueueReadImage", success))
                         {
                             freePointers(mallocedPointers, allignedMallocedPointers);
                             // In debug its nice to hit an assert so that we stop and
@@ -1125,25 +1218,8 @@ int main(int argc, char** argv)
 
                         const auto runNamePrint = OUTPUT_DIRECTORY + runNameBase + "_image.png";
 
-                        success = stbi_write_png(runNamePrint.c_str(), lenaX, lenaY, lenaNumChannels, lenaOutputImageData, sizeof(char) * lenaX * lenaNumChannels);
+                        success = stbi_write_png(runNamePrint.c_str(), lenaX, lenaY, lenaNumChannels, lenaOutputData, sizeof(char) * lenaX * lenaNumChannels);
                         assert(success);
-
-                        success = clEnqueueUnmapMemObject(
-                            chosenCommandQueue,
-                            lenaOutputImageMem,
-                            lenaOutputImageData,
-                            0,
-                            nullptr,
-                            nullptr
-                        );
-                        if (!processClCallStatus("clEnqueueUnmapMemObject", success))
-                        {
-                            freePointers(mallocedPointers, allignedMallocedPointers);
-                            // In debug its nice to hit an assert so that we stop and
-                            // can see what are the things that were sent in to break it.
-                            assert(false);
-                            return -1;
-                        }
 
                         const auto imageSize = getFileSize(runNamePrint);
 
@@ -1159,20 +1235,19 @@ int main(int argc, char** argv)
                     }
                 }
 
-
                 printf("finished timing.\nPrinting results\n\n");
 
+                const auto runNameSerial = runNameBase + "_serial_times";
                 const auto runNameEnque = runNameBase + "_enque_times";
                 const auto runNameFinish = runNameBase + "_finish_times";
-                const auto runNameResults = runNameBase + "_results.txt";
 
+                const auto lenaSerialResults = printResults(lenaTimeCapturesSerial, runNameSerial);
                 const auto lenaEnqueResults = printResults(lenaTimeCapturesEnque, runNameEnque);
                 const auto lenaFinishResults = printResults(lenaTimeCapturesFinish, runNameFinish);
 
+                resultsOutputs[runNameSerial] = lenaSerialResults;
                 resultsOutputs[runNameEnque] = lenaEnqueResults;
                 resultsOutputs[runNameFinish] = lenaFinishResults;
-
-                
             }
         }
     }

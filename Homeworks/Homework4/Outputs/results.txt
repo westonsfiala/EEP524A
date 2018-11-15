@@ -1,72 +1,72 @@
-Lena_240x240_filt_5_sig2_0.750000_enque_times: Average = 16.7936ms; Standard Deviation = 18.4645
-Lena_240x240_filt_5_sig2_0.750000_finish_times: Average = 256.996ms; Standard Deviation = 15.0341
-Lena_240x240_filt_5_sig2_0.750000_serial_times: Average = 7121.96ms; Standard Deviation = 596.146
-Lena_240x240_filt_5_sig2_1.200000_enque_times: Average = 15.2861ms; Standard Deviation = 15.0372
-Lena_240x240_filt_5_sig2_1.200000_finish_times: Average = 265.763ms; Standard Deviation = 26.0368
-Lena_240x240_filt_5_sig2_1.200000_serial_times: Average = 7140.57ms; Standard Deviation = 834.362
-Lena_240x240_filt_7_sig2_0.750000_enque_times: Average = 22.9263ms; Standard Deviation = 15.5015
-Lena_240x240_filt_7_sig2_0.750000_finish_times: Average = 402.142ms; Standard Deviation = 24.1595
-Lena_240x240_filt_7_sig2_0.750000_serial_times: Average = 14134ms; Standard Deviation = 1504.65
-Lena_240x240_filt_7_sig2_1.200000_enque_times: Average = 18.597ms; Standard Deviation = 12.3982
-Lena_240x240_filt_7_sig2_1.200000_finish_times: Average = 398.541ms; Standard Deviation = 33.3527
-Lena_240x240_filt_7_sig2_1.200000_serial_times: Average = 13919.5ms; Standard Deviation = 1456.99
-Lena_240x240_filt_9_sig2_0.750000_enque_times: Average = 26.4534ms; Standard Deviation = 15.5338
-Lena_240x240_filt_9_sig2_0.750000_finish_times: Average = 514.094ms; Standard Deviation = 26.5356
-Lena_240x240_filt_9_sig2_0.750000_serial_times: Average = 22137.2ms; Standard Deviation = 1600.42
-Lena_240x240_filt_9_sig2_1.200000_enque_times: Average = 24.8434ms; Standard Deviation = 18.6837
-Lena_240x240_filt_9_sig2_1.200000_finish_times: Average = 507.671ms; Standard Deviation = 17.642
-Lena_240x240_filt_9_sig2_1.200000_serial_times: Average = 22335.3ms; Standard Deviation = 2471.45
-Lena_367x367_filt_5_sig2_0.750000_enque_times: Average = 22.8978ms; Standard Deviation = 10.5471
-Lena_367x367_filt_5_sig2_0.750000_finish_times: Average = 441.51ms; Standard Deviation = 19.0535
-Lena_367x367_filt_5_sig2_0.750000_serial_times: Average = 16606.6ms; Standard Deviation = 706.231
-Lena_367x367_filt_5_sig2_1.200000_enque_times: Average = 24.6557ms; Standard Deviation = 12.8708
-Lena_367x367_filt_5_sig2_1.200000_finish_times: Average = 445.691ms; Standard Deviation = 23.8558
-Lena_367x367_filt_5_sig2_1.200000_serial_times: Average = 16714.8ms; Standard Deviation = 531.906
-Lena_367x367_filt_7_sig2_0.750000_enque_times: Average = 27.7049ms; Standard Deviation = 12.7132
-Lena_367x367_filt_7_sig2_0.750000_finish_times: Average = 774.697ms; Standard Deviation = 29.8441
-Lena_367x367_filt_7_sig2_0.750000_serial_times: Average = 32316ms; Standard Deviation = 1910.11
-Lena_367x367_filt_7_sig2_1.200000_enque_times: Average = 27.1474ms; Standard Deviation = 12.139
-Lena_367x367_filt_7_sig2_1.200000_finish_times: Average = 773.07ms; Standard Deviation = 26.6933
-Lena_367x367_filt_7_sig2_1.200000_serial_times: Average = 32166.1ms; Standard Deviation = 1756.42
-Lena_367x367_filt_9_sig2_0.750000_enque_times: Average = 30.4584ms; Standard Deviation = 12.3828
-Lena_367x367_filt_9_sig2_0.750000_finish_times: Average = 1056.09ms; Standard Deviation = 53.2374
-Lena_367x367_filt_9_sig2_0.750000_serial_times: Average = 51245.4ms; Standard Deviation = 2572.02
-Lena_367x367_filt_9_sig2_1.200000_enque_times: Average = 28.9337ms; Standard Deviation = 10.0506
-Lena_367x367_filt_9_sig2_1.200000_finish_times: Average = 1057.04ms; Standard Deviation = 57.1421
-Lena_367x367_filt_9_sig2_1.200000_serial_times: Average = 51336.9ms; Standard Deviation = 2098.41
-Lena_512x512_filt_5_sig2_0.750000_enque_times: Average = 27.9211ms; Standard Deviation = 10.1356
-Lena_512x512_filt_5_sig2_0.750000_finish_times: Average = 701.919ms; Standard Deviation = 29.9518
-Lena_512x512_filt_5_sig2_0.750000_serial_times: Average = 35719.7ms; Standard Deviation = 2536.88
-Lena_512x512_filt_5_sig2_1.200000_enque_times: Average = 26.6923ms; Standard Deviation = 10.7227
-Lena_512x512_filt_5_sig2_1.200000_finish_times: Average = 699.194ms; Standard Deviation = 19.9205
-Lena_512x512_filt_5_sig2_1.200000_serial_times: Average = 35670.9ms; Standard Deviation = 2384.58
-Lena_512x512_filt_7_sig2_0.750000_enque_times: Average = 34.213ms; Standard Deviation = 26.6928
-Lena_512x512_filt_7_sig2_0.750000_finish_times: Average = 1324.23ms; Standard Deviation = 51.5315
-Lena_512x512_filt_7_sig2_0.750000_serial_times: Average = 65408.2ms; Standard Deviation = 1406.01
-Lena_512x512_filt_7_sig2_1.200000_enque_times: Average = 33.5645ms; Standard Deviation = 12.6341
-Lena_512x512_filt_7_sig2_1.200000_finish_times: Average = 1325.31ms; Standard Deviation = 58.5033
-Lena_512x512_filt_7_sig2_1.200000_serial_times: Average = 65688.9ms; Standard Deviation = 2855.98
-Lena_512x512_filt_9_sig2_0.750000_enque_times: Average = 34.6226ms; Standard Deviation = 9.94658
-Lena_512x512_filt_9_sig2_0.750000_finish_times: Average = 1972.05ms; Standard Deviation = 88.9414
-Lena_512x512_filt_9_sig2_0.750000_serial_times: Average = 103294ms; Standard Deviation = 3565.77
-Lena_512x512_filt_9_sig2_1.200000_enque_times: Average = 36.4146ms; Standard Deviation = 10.6845
-Lena_512x512_filt_9_sig2_1.200000_finish_times: Average = 1958.94ms; Standard Deviation = 96.6
-Lena_512x512_filt_9_sig2_1.200000_serial_times: Average = 106314ms; Standard Deviation = 8783.69
-Lena_850x850_filt_5_sig2_0.750000_enque_times: Average = 30.7485ms; Standard Deviation = 7.91066
-Lena_850x850_filt_5_sig2_0.750000_finish_times: Average = 1810.19ms; Standard Deviation = 75.8848
-Lena_850x850_filt_5_sig2_0.750000_serial_times: Average = 54622.3ms; Standard Deviation = 3665.52
-Lena_850x850_filt_5_sig2_1.200000_enque_times: Average = 33.5019ms; Standard Deviation = 13.4609
-Lena_850x850_filt_5_sig2_1.200000_finish_times: Average = 1800.33ms; Standard Deviation = 68.3786
-Lena_850x850_filt_5_sig2_1.200000_serial_times: Average = 54399ms; Standard Deviation = 3398.82
-Lena_850x850_filt_7_sig2_0.750000_enque_times: Average = 35.6353ms; Standard Deviation = 6.88462
-Lena_850x850_filt_7_sig2_0.750000_finish_times: Average = 3579.73ms; Standard Deviation = 62.6485
-Lena_850x850_filt_7_sig2_0.750000_serial_times: Average = 104130ms; Standard Deviation = 5486.16
-Lena_850x850_filt_7_sig2_1.200000_enque_times: Average = 37.5524ms; Standard Deviation = 9.33048
-Lena_850x850_filt_7_sig2_1.200000_finish_times: Average = 3613.75ms; Standard Deviation = 105.506
-Lena_850x850_filt_7_sig2_1.200000_serial_times: Average = 105195ms; Standard Deviation = 5787.45
-Lena_850x850_filt_9_sig2_0.750000_enque_times: Average = 36.3976ms; Standard Deviation = 6.82379
-Lena_850x850_filt_9_sig2_0.750000_finish_times: Average = 5049.08ms; Standard Deviation = 60.2563
-Lena_850x850_filt_9_sig2_0.750000_serial_times: Average = 164561ms; Standard Deviation = 5271.48
-Lena_850x850_filt_9_sig2_1.200000_enque_times: Average = 36.2781ms; Standard Deviation = 5.99927
-Lena_850x850_filt_9_sig2_1.200000_finish_times: Average = 5058.98ms; Standard Deviation = 53.5921
-Lena_850x850_filt_9_sig2_1.200000_serial_times: Average = 165339ms; Standard Deviation = 5832.22
+Lena_240x240_filt_5_sig2_0.750000_enque_times; 16.7936ms; 18.4645
+Lena_240x240_filt_5_sig2_0.750000_finish_times; 256.996ms; 15.0341
+Lena_240x240_filt_5_sig2_0.750000_serial_times; 7121.96ms; 596.146
+Lena_240x240_filt_5_sig2_1.200000_enque_times; 15.2861ms; 15.0372
+Lena_240x240_filt_5_sig2_1.200000_finish_times; 265.763ms; 26.0368
+Lena_240x240_filt_5_sig2_1.200000_serial_times; 7140.57ms; 834.362
+Lena_240x240_filt_7_sig2_0.750000_enque_times; 22.9263ms; 15.5015
+Lena_240x240_filt_7_sig2_0.750000_finish_times; 402.142ms; 24.1595
+Lena_240x240_filt_7_sig2_0.750000_serial_times; 14134ms; 1504.65
+Lena_240x240_filt_7_sig2_1.200000_enque_times; 18.597ms; 12.3982
+Lena_240x240_filt_7_sig2_1.200000_finish_times; 398.541ms; 33.3527
+Lena_240x240_filt_7_sig2_1.200000_serial_times; 13919.5ms; 1456.99
+Lena_240x240_filt_9_sig2_0.750000_enque_times; 26.4534ms; 15.5338
+Lena_240x240_filt_9_sig2_0.750000_finish_times; 514.094ms; 26.5356
+Lena_240x240_filt_9_sig2_0.750000_serial_times; 22137.2ms; 1600.42
+Lena_240x240_filt_9_sig2_1.200000_enque_times; 24.8434ms; 18.6837
+Lena_240x240_filt_9_sig2_1.200000_finish_times; 507.671ms; 17.642
+Lena_240x240_filt_9_sig2_1.200000_serial_times; 22335.3ms; 2471.45
+Lena_367x367_filt_5_sig2_0.750000_enque_times; 22.8978ms; 10.5471
+Lena_367x367_filt_5_sig2_0.750000_finish_times; 441.51ms; 19.0535
+Lena_367x367_filt_5_sig2_0.750000_serial_times; 16606.6ms; 706.231
+Lena_367x367_filt_5_sig2_1.200000_enque_times; 24.6557ms; 12.8708
+Lena_367x367_filt_5_sig2_1.200000_finish_times; 445.691ms; 23.8558
+Lena_367x367_filt_5_sig2_1.200000_serial_times; 16714.8ms; 531.906
+Lena_367x367_filt_7_sig2_0.750000_enque_times; 27.7049ms; 12.7132
+Lena_367x367_filt_7_sig2_0.750000_finish_times; 774.697ms; 29.8441
+Lena_367x367_filt_7_sig2_0.750000_serial_times; 32316ms; 1910.11
+Lena_367x367_filt_7_sig2_1.200000_enque_times; 27.1474ms; 12.139
+Lena_367x367_filt_7_sig2_1.200000_finish_times; 773.07ms; 26.6933
+Lena_367x367_filt_7_sig2_1.200000_serial_times; 32166.1ms; 1756.42
+Lena_367x367_filt_9_sig2_0.750000_enque_times; 30.4584ms; 12.3828
+Lena_367x367_filt_9_sig2_0.750000_finish_times; 1056.09ms; 53.2374
+Lena_367x367_filt_9_sig2_0.750000_serial_times; 51245.4ms; 2572.02
+Lena_367x367_filt_9_sig2_1.200000_enque_times; 28.9337ms; 10.0506
+Lena_367x367_filt_9_sig2_1.200000_finish_times; 1057.04ms; 57.1421
+Lena_367x367_filt_9_sig2_1.200000_serial_times; 51336.9ms; 2098.41
+Lena_512x512_filt_5_sig2_0.750000_enque_times; 27.9211ms; 10.1356
+Lena_512x512_filt_5_sig2_0.750000_finish_times; 701.919ms; 29.9518
+Lena_512x512_filt_5_sig2_0.750000_serial_times; 35719.7ms; 2536.88
+Lena_512x512_filt_5_sig2_1.200000_enque_times; 26.6923ms; 10.7227
+Lena_512x512_filt_5_sig2_1.200000_finish_times; 699.194ms; 19.9205
+Lena_512x512_filt_5_sig2_1.200000_serial_times; 35670.9ms; 2384.58
+Lena_512x512_filt_7_sig2_0.750000_enque_times; 34.213ms; 26.6928
+Lena_512x512_filt_7_sig2_0.750000_finish_times; 1324.23ms; 51.5315
+Lena_512x512_filt_7_sig2_0.750000_serial_times; 65408.2ms; 1406.01
+Lena_512x512_filt_7_sig2_1.200000_enque_times; 33.5645ms; 12.6341
+Lena_512x512_filt_7_sig2_1.200000_finish_times; 1325.31ms; 58.5033
+Lena_512x512_filt_7_sig2_1.200000_serial_times; 65688.9ms; 2855.98
+Lena_512x512_filt_9_sig2_0.750000_enque_times; 34.6226ms; 9.94658
+Lena_512x512_filt_9_sig2_0.750000_finish_times; 1972.05ms; 88.9414
+Lena_512x512_filt_9_sig2_0.750000_serial_times; 103294ms; 3565.77
+Lena_512x512_filt_9_sig2_1.200000_enque_times; 36.4146ms; 10.6845
+Lena_512x512_filt_9_sig2_1.200000_finish_times; 1958.94ms; 96.6
+Lena_512x512_filt_9_sig2_1.200000_serial_times; 106314ms; 8783.69
+Lena_850x850_filt_5_sig2_0.750000_enque_times; 30.7485ms; 7.91066
+Lena_850x850_filt_5_sig2_0.750000_finish_times; 1810.19ms; 75.8848
+Lena_850x850_filt_5_sig2_0.750000_serial_times; 54622.3ms; 3665.52
+Lena_850x850_filt_5_sig2_1.200000_enque_times; 33.5019ms; 13.4609
+Lena_850x850_filt_5_sig2_1.200000_finish_times; 1800.33ms; 68.3786
+Lena_850x850_filt_5_sig2_1.200000_serial_times; 54399ms; 3398.82
+Lena_850x850_filt_7_sig2_0.750000_enque_times; 35.6353ms; 6.88462
+Lena_850x850_filt_7_sig2_0.750000_finish_times; 3579.73ms; 62.6485
+Lena_850x850_filt_7_sig2_0.750000_serial_times; 104130ms; 5486.16
+Lena_850x850_filt_7_sig2_1.200000_enque_times; 37.5524ms; 9.33048
+Lena_850x850_filt_7_sig2_1.200000_finish_times; 3613.75ms; 105.506
+Lena_850x850_filt_7_sig2_1.200000_serial_times; 105195ms; 5787.45
+Lena_850x850_filt_9_sig2_0.750000_enque_times; 36.3976ms; 6.82379
+Lena_850x850_filt_9_sig2_0.750000_finish_times; 5049.08ms; 60.2563
+Lena_850x850_filt_9_sig2_0.750000_serial_times; 164561ms; 5271.48
+Lena_850x850_filt_9_sig2_1.200000_enque_times; 36.2781ms; 5.99927
+Lena_850x850_filt_9_sig2_1.200000_finish_times; 5058.98ms; 53.5921
+Lena_850x850_filt_9_sig2_1.200000_serial_times; 165339ms; 5832.22

@@ -32,7 +32,7 @@ const int filterWidth
             // operate element-wise on all 3 color components (r,g,b)
             float4 pixel = convert_float4(read_imageui(inputImg, sampler, coords)); 
             // leave a-channel unchanged
-            sum += pixel * (float4)(filterVal,filterVal,filterVal,0.0f); 
+            sum += pixel * (float4)(filterVal,filterVal,filterVal,filterVal); 
 
             filtIdx++;
         }
@@ -40,7 +40,7 @@ const int filterWidth
     //write resultant filtered pixel to output image
     coords = (int2)(x,y);
 
-    uint4 sumUint = convert_uint4((float4)(sum.x,sum.y,sum.z,255));
+    uint4 sumUint = convert_uint4((float4)(sum.x,sum.y,sum.z,sum.w));
     //printf("%i\n", sumUint.w);
     write_imageui(outputImg, coords, sumUint); 
     //write_imagef(outputImg, coords, sum);

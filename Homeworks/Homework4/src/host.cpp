@@ -1254,7 +1254,7 @@ int main(int argc, char** argv)
                         const auto imageSize = getFileSize(runNamePrint);
 
                         // If the image size is too small, we will have a trash image, remake all the data and try to run it again.
-                        if (imageSize < static_cast<long>(originalImageSize * 0.5))
+                        if (imageSize < static_cast<long>(originalImageSize * 0.0))
                         {
                             filterQueue--;
                             printf("Image Creation failed. Restarting filter run.\n");

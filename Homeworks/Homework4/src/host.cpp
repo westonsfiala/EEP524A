@@ -1048,7 +1048,6 @@ int main(int argc, char** argv)
 #ifdef RUN_SERIAL
                 std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesSerial;
 #endif
-                std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesEnque;
                 std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesFinish;
 
                 LARGE_INTEGER startTime, finishTime;
@@ -1130,49 +1129,6 @@ int main(int argc, char** argv)
                     // push back the serial times.
                     lenaTimeCapturesSerial.emplace_back(startTime, finishTime);
 #endif
-
-                    // Do the captures for the enque time
-                    QueryPerformanceCounter(&startTime);
-
-                    success = clEnqueueNDRangeKernel(
-                        chosenCommandQueue,
-                        blurKernel,
-                        2,
-                        globalWorkOffset,
-                        globalWorkSize,
-                        localWorkSize,
-                        0,
-                        nullptr,
-                        nullptr
-                    );
-                    /*
-                    if (!process_cl_call_status("clEnqueueNDRangeKernel", success))
-                    {
-                        free_pointers(malloced_pointers, alligned_malloced_pointers);
-                        // In debug its nice to hit an assert so that we stop and
-                        // can see what are the things that were sent in to break it.
-                        assert(false);
-                        return -1;
-                    }
-                    */
-
-                    QueryPerformanceCounter(&finishTime);
-
-                    // Wait for the kernel to finish
-                    success = clFinish(chosenCommandQueue);
-                    /*
-                    if (!process_cl_call_status("clFinish", success))
-                    {
-                        free_pointers(malloced_pointers, alligned_malloced_pointers);
-                        // In debug its nice to hit an assert so that we stop and
-                        // can see what are the things that were sent in to break it.
-                        assert(false);
-                        return -1;
-                    }
-                    */
-
-                    // Sometimes we have to keep running the kernel to get a good picture.
-                    lenaTimeCapturesEnque.emplace_back(startTime, finishTime);
 
                     //Do the captures for the finish time
                     QueryPerformanceCounter(&startTime);
@@ -1273,9 +1229,6 @@ int main(int argc, char** argv)
                 const auto lenaSerialResults = printResults(lenaTimeCapturesSerial, runNameSerial);
                 resultsOutputs[runNameSerial] = lenaSerialResults;
 #endif
-                const auto runNameEnque = runNameBase + "_enque_times";
-                const auto lenaEnqueResults = printResults(lenaTimeCapturesEnque, runNameEnque);
-                resultsOutputs[runNameEnque] = lenaEnqueResults;
 
                 const auto runNameFinish = runNameBase + "_finish_times";
                 const auto lenaFinishResults = printResults(lenaTimeCapturesFinish, runNameFinish);

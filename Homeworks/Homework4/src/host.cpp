@@ -19,6 +19,7 @@
 #include <algorithm>
 
 #define DONT_PRINT_CALL_SUCCESSES
+//#define RUN_SERIAL
 
 // What platform and device to use.
 const static std::string PLATFORM_NAME_TO_USE = "Intel(R) OpenCL";
@@ -148,6 +149,27 @@ std::pair<double, double> printResults(std::vector<std::pair<cl_ulong, cl_ulong>
 
     myfile.close();
     return {average(samples), standardDeviation(samples)};
+}
+
+uint8_t* convert1To4Channel(uint8_t* oneChannelData, const uint32_t& numPixels)
+{
+    // ReSharper disable once CppLocalVariableMayBeConst
+    auto fourChannelData = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * numPixels * 4));
+
+    const auto numChannelData = numPixels;
+    for (uint32_t i = 0; i < numChannelData; i++)
+    {
+        const auto fourChannelIndex = i * 4;
+        const auto rValue = oneChannelData[i];
+        fourChannelData[fourChannelIndex] = rValue;
+        fourChannelData[fourChannelIndex + 1] = rValue;
+        fourChannelData[fourChannelIndex + 2] = rValue;
+        fourChannelData[fourChannelIndex + 3] = static_cast<uint8_t>(255);
+    }
+
+    free(oneChannelData);
+
+    return fourChannelData;
 }
 
 uint8_t* convert3To4Channel(uint8_t* threeChannelData, const uint32_t& numPixels)
@@ -795,22 +817,26 @@ int main(int argc, char** argv)
                 switch (lenaNumChannels)
                 {
                 case 1:
-                    lenaImageFormat.image_channel_order = CL_R;
+                    // Always convert to 4 channels.
+                    lenaData = convert1To4Channel(lenaData, lenaX * lenaY);
+                    lenaNumChannels = 4;
                     break;
                 case 2:
-                    lenaImageFormat.image_channel_order = CL_RA;
-                    break;
+                    // Always convert to 4 channels.
+                    printf("Cannot support 2 channel pictures\n");
+                    freePointers(mallocedPointers, allignedMallocedPointers);
+                    return -1;
                 case 3:
                     // My board does not support 3 channels of data, so I just add a 4th A channel with its value set to 255.
                     lenaData = convert3To4Channel(lenaData, lenaX * lenaY);
                     lenaNumChannels = 4;
                 case 4:
-                    lenaImageFormat.image_channel_order = CL_RGBA;
                     break;
                 default:
                     assert(false);
                     break;
                 }
+                lenaImageFormat.image_channel_order = CL_RGBA;
 
                 // lena_data pointer may be swapped out in the case of 3 channels of data.
                 mallocedPointers.push_back(lenaData);
@@ -1019,7 +1045,9 @@ int main(int argc, char** argv)
                 size_t localWorkSize[] = {32, 2, 0};
 
                 // Get the maps ready for timing
+#ifdef RUN_SERIAL
                 std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesSerial;
+#endif
                 std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesEnque;
                 std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>> lenaTimeCapturesFinish;
 
@@ -1034,6 +1062,7 @@ int main(int argc, char** argv)
                 for (uint32_t i = 0; i < KERNEL_ITERATIONS; ++i)
                 {
 
+#ifdef RUN_SERIAL
                     // Do the captures for the enque time
                     QueryPerformanceCounter(&startTime);
 
@@ -1100,6 +1129,7 @@ int main(int argc, char** argv)
 
                     // push back the serial times.
                     lenaTimeCapturesSerial.emplace_back(startTime, finishTime);
+#endif
 
                     // Do the captures for the enque time
                     QueryPerformanceCounter(&startTime);
@@ -1224,7 +1254,7 @@ int main(int argc, char** argv)
                         const auto imageSize = getFileSize(runNamePrint);
 
                         // If the image size is too small, we will have a trash image, remake all the data and try to run it again.
-                        if (imageSize < static_cast<long>(originalImageSize * 0.75))
+                        if (imageSize < static_cast<long>(originalImageSize * 0.5))
                         {
                             filterQueue--;
                             printf("Image Creation failed. Restarting filter run.\n");
@@ -1237,16 +1267,18 @@ int main(int argc, char** argv)
 
                 printf("finished timing.\nPrinting results\n\n");
 
+
+#ifdef RUN_SERIAL
                 const auto runNameSerial = runNameBase + "_serial_times";
-                const auto runNameEnque = runNameBase + "_enque_times";
-                const auto runNameFinish = runNameBase + "_finish_times";
-
                 const auto lenaSerialResults = printResults(lenaTimeCapturesSerial, runNameSerial);
-                const auto lenaEnqueResults = printResults(lenaTimeCapturesEnque, runNameEnque);
-                const auto lenaFinishResults = printResults(lenaTimeCapturesFinish, runNameFinish);
-
                 resultsOutputs[runNameSerial] = lenaSerialResults;
+#endif
+                const auto runNameEnque = runNameBase + "_enque_times";
+                const auto lenaEnqueResults = printResults(lenaTimeCapturesEnque, runNameEnque);
                 resultsOutputs[runNameEnque] = lenaEnqueResults;
+
+                const auto runNameFinish = runNameBase + "_finish_times";
+                const auto lenaFinishResults = printResults(lenaTimeCapturesFinish, runNameFinish);
                 resultsOutputs[runNameFinish] = lenaFinishResults;
             }
         }

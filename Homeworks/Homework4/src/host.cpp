@@ -112,7 +112,7 @@ std::pair<double, double> printResults(std::vector<std::pair<LARGE_INTEGER, LARG
         double elapsedTime = timeStamp.second.QuadPart - timeStamp.first.QuadPart;
 
         // Convert from number of counts to number of milliseconds
-        elapsedTime *= 1000000;
+        elapsedTime *= 1000;
         elapsedTime /= frequency.QuadPart;
 
         samples.push_back(static_cast<double>(elapsedTime));

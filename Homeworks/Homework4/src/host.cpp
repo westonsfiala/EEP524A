@@ -1155,8 +1155,6 @@ int main(int argc, char** argv)
                     }
                     */
 
-                    //QueryPerformanceCounter(&finish_time);
-
                     // Wait for the kernel to finish
                     success = clFinish(chosenCommandQueue);
                     /*

@@ -19,7 +19,7 @@
 #include <algorithm>
 
 #define DONT_PRINT_CALL_SUCCESSES
-//#define RUN_SERIAL
+#define RUN_SERIAL
 
 // What platform and device to use.
 const static std::string PLATFORM_NAME_TO_USE = "Intel(R) OpenCL";
@@ -817,7 +817,7 @@ int main(int argc, char** argv)
                 switch (lenaNumChannels)
                 {
                 case 1:
-                    // Always convert to 4 channels.
+                    // Always convert to 4 channels.x
                     lenaData = convert1To4Channel(lenaData, lenaX * lenaY);
                     lenaNumChannels = 4;
                     break;
@@ -1075,21 +1075,18 @@ int main(int argc, char** argv)
                             // initialize the sum.
                             float sum[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-                            // We never want to mess with the A channel.
-                            const auto numChannels = std::min<uint8_t>(lenaNumChannels, 3);
-
                             // filter kernel passed in as linearized buffer array
                             uint32_t filtIdx = 0; 
                             for (auto filterXIndex = -halfWidth; filterXIndex <= halfWidth; filterXIndex++) // iterate filter rows
                             {
                                 // Don't calculate this more than we need it.
-                                const auto imageXIndex = std::min<uint32_t>(std::max<uint32_t>(xIndex + filterXIndex, 0), lenaX);
+                                const auto imageXIndex = std::min<int32_t>(std::max<int32_t>(xIndex + filterXIndex, 0), lenaX-1);
 
                                 for (auto filterYIndex = -halfWidth; filterYIndex <= halfWidth; filterYIndex++) // iterate filter cols
                                 {
                                     // Get the x & y indexes into the image.
                                     // Need to do the min max stuff so that we don't index out of the image.
-                                    const auto imageYIndex = std::min<uint32_t>(std::max<uint32_t>(yIndex + filterYIndex, 0), lenaY);
+                                    const auto imageYIndex = std::min<int32_t>(std::max<int32_t>(yIndex + filterYIndex, 0), lenaY-1);
 
                                     // Get the filter value.
                                     const auto filterValue = blurFilter[filtIdx];
@@ -1098,7 +1095,7 @@ int main(int argc, char** argv)
                                     const auto imageIndex = (imageYIndex*lenaX + imageXIndex) * lenaNumChannels;
 
                                     // Go over all the channels that we have.
-                                    for(auto channelNum = 0; channelNum < numChannels; ++channelNum)
+                                    for(auto channelNum = 0; channelNum < lenaNumChannels; ++channelNum)
                                     {
                                         sum[channelNum] += lenaData[imageIndex + channelNum] * filterValue;
                                     }
@@ -1109,17 +1106,9 @@ int main(int argc, char** argv)
 
                             const auto imageIndex = yIndex * lenaX + xIndex;
                             // Go over all the channels that we have.
-                            for (auto channelNum = 0; channelNum < numChannels; ++channelNum)
+                            for (auto channelNum = 0; channelNum < lenaNumChannels; ++channelNum)
                             {
-                                // Never mess with the A channel.
-                                if(channelNum == 3)
-                                {
-                                    static_cast<char*>(lenaOutputData)[imageIndex + channelNum] = sum[channelNum];
-                                }
-                                else
-                                {
-                                    static_cast<char*>(lenaOutputData)[imageIndex + channelNum] = lenaData[imageIndex + channelNum];
-                                }
+                                static_cast<char*>(lenaOutputData)[imageIndex + channelNum] = lenaData[imageIndex + channelNum];
                             }
                         }
                     }

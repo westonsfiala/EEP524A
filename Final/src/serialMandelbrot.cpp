@@ -11,24 +11,29 @@
 #include <ostream>
 #include <iostream>
 #include <SDL.h>
+#include <numeric>
 
 static const auto xMax = 1920;
 static const auto yMax = 1080;
 static auto MAXCOUNT = 0;
+
 // Function to draw mandelbrot set 
 std::vector<uint8_t> fractal(const float left, const float top, const float xside, const float yside, const int xMax, const int yMax)
 {
-    auto pixels = std::vector<uint8_t>(xMax * yMax, 0);
+    auto pixels = std::vector<uint32_t>(xMax * yMax, 0);
 
     // setting up the xscale and yscale 
     const auto xscale = xside / xMax;
     const auto yscale = yside / yMax;
 
+    auto histogram = std::vector<uint32_t>(MAXCOUNT + 1, 0);
+
     // scanning every point in that rectangular area. 
     // Each point represents a Complex number (x + yi). 
     // Iterate that complex number 
-    for (auto y = 0; y < yMax-1; y++) {
-        for (auto x = 0; x < xMax-1; x++)
+    for (auto y = 0; y < yMax - 1; y++)
+    {
+        for (auto x = 0; x < xMax - 1; x++)
         {
             // c_real 
             const auto cx = x * xscale + left;
@@ -49,7 +54,7 @@ std::vector<uint8_t> fractal(const float left, const float top, const float xsid
             // If you reach the Maximum number of iterations 
             // and If the distance from the origin is 
             // greater than 2 exit the loop 
-            while ((zx * zx + zy * zy < 4) && (count < MAXCOUNT))
+            while ((zx * zx + zy * zy < (1 << 16)) && (count < MAXCOUNT))
             {
                 // Calculate Mandelbrot function 
                 // z = z*z + c where z is a complex number 
@@ -67,82 +72,101 @@ std::vector<uint8_t> fractal(const float left, const float top, const float xsid
                 count = count + 1;
             }
 
-            // Take the count and turn it into a number between 0-255
-            auto adjustedCount = 255 * count / MAXCOUNT;
 
             // To display the created fractal 
             const auto index = y * xMax + x;
-            pixels[index] = adjustedCount;
+            pixels[index] = count;
+            histogram[count]++;
         }
     }
 
-    return pixels;
+    // Get the total number of values in the histogram.
+    const auto total = xMax * yMax;
+
+    std::vector<uint8_t> outputPixels;
+
+    for(auto pixel : pixels)
+    {
+        auto hue = 0.0f;
+        for(auto i = 0; i < pixel; ++i)
+        {
+            hue += static_cast<float>(histogram[i]) / total;
+        }
+
+        // Take the count and turn it into a number between 0-255
+        uint8_t adjustedHue = hue * 255;
+
+        outputPixels.push_back(adjustedHue);
+    }
+
+
+    return outputPixels;
 }
 
 // Driver code 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     // Initialize the SDL library
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0)
+    {
         std::cout << "SDL_Init Error: " << SDL_GetError() << std::endl;
         return 1;
     }
 
     // Create the SDL window that we will use.
-    SDL_Window *win = SDL_CreateWindow("Hello World!", 0, 0, xMax, yMax, SDL_WINDOW_SHOWN);
-    if (win == nullptr) {
+    SDL_Window* win = SDL_CreateWindow("Hello World!", 0, 0, xMax, yMax, SDL_WINDOW_SHOWN);
+    if (win == nullptr)
+    {
         std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
         SDL_Quit();
         return 1;
     }
 
     // Create the Renderer that will render our image into the window.
-    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (ren == nullptr) {
+    SDL_Renderer* ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (ren == nullptr)
+    {
         SDL_DestroyWindow(win);
         std::cout << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
         SDL_Quit();
         return 1;
     }
 
-    for (auto i = 1; i < 100; ++i)
+    for (auto i = 5; i < 100; ++i)
     {
         MAXCOUNT = i;
         // setting the left, top, xside and yside 
         // for the screen and image to be displayed 
-        const auto left = -1.5f;
-        const auto top = -0.5f;
-        const auto xside = 1.0f;
-        const auto yside = 1.0f;
+        const auto left = -2.0f;
+        const auto top = -1.25f;
+        const auto xside = 1.5f * static_cast<float>(xMax)/yMax;
+        const auto yside = 2.5f;
 
         // Function calling 
         auto pixelColor = fractal(left, top, xside, yside, xMax, yMax);
 
-        std::vector<uint8_t> pixelMap;
-
+        auto pixelMap = std::vector<uint8_t>();
         for (auto pixel : pixelColor)
         {
-            // Red
             pixelMap.push_back(pixel);
-            // Blue
             pixelMap.push_back(pixel);
-            // Green
             pixelMap.push_back(pixel);
+            pixelMap.push_back(255);
         }
 
         // Create our surface from the 
-        SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(static_cast<void*>(pixelMap.data()), xMax, yMax, 24, xMax * 3, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+        SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(static_cast<void*>(pixelMap.data()), xMax, yMax, 32, xMax * 4, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
 
-        SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surf);
+        SDL_Texture* tex = SDL_CreateTextureFromSurface(ren, surf);
         SDL_FreeSurface(surf);
-        if (tex == nullptr) {
+        if (tex == nullptr)
+        {
             SDL_DestroyRenderer(ren);
             SDL_DestroyWindow(win);
             std::cout << "SDL_CreateTextureFromSurface Error: " << SDL_GetError() << std::endl;
             SDL_Quit();
             return 1;
         }
-
 
         //First clear the renderer
         SDL_RenderClear(ren);

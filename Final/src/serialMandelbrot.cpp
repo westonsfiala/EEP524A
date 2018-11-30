@@ -11,35 +11,32 @@
 #include <ostream>
 #include <iostream>
 #include <SDL.h>
-#include <numeric>
 
 static const auto xMax = 1920;
 static const auto yMax = 1080;
-static auto MAXCOUNT = 0;
+static auto MAX_ITERATIONS = 1000;
 
 // Function to draw mandelbrot set 
-std::vector<uint8_t> fractal(const float left, const float top, const float xside, const float yside, const int xMax, const int yMax)
+std::vector<uint8_t> fractal(const float left, const float top, const float xSide, const float ySide, const int xMax, const int yMax, const int maxCount)
 {
-    auto pixels = std::vector<uint32_t>(xMax * yMax, 0);
+    auto pixels = std::vector<uint8_t>(xMax * yMax, 0);
 
     // setting up the xscale and yscale 
-    const auto xscale = xside / xMax;
-    const auto yscale = yside / yMax;
-
-    auto histogram = std::vector<uint32_t>(MAXCOUNT + 1, 0);
+    const auto xScale = xSide / xMax;
+    const auto yScale = ySide / yMax;
 
     // scanning every point in that rectangular area. 
     // Each point represents a Complex number (x + yi). 
     // Iterate that complex number 
-    for (auto y = 0; y < yMax - 1; y++)
+    for (auto y = 0; y < yMax; y++)
     {
-        for (auto x = 0; x < xMax - 1; x++)
+        for (auto x = 0; x < xMax; x++)
         {
             // c_real 
-            const auto cx = x * xscale + left;
+            const auto cx = x * xScale + left;
 
             // c_imaginary 
-            const auto cy = y * yscale + top;
+            const auto cy = y * yScale + top;
 
             // z_real 
             float zx = 0;
@@ -54,53 +51,46 @@ std::vector<uint8_t> fractal(const float left, const float top, const float xsid
             // If you reach the Maximum number of iterations 
             // and If the distance from the origin is 
             // greater than 2 exit the loop 
-            while ((zx * zx + zy * zy < (1 << 16)) && (count < MAXCOUNT))
+            while ((zx * zx + zy * zy < (1 << 16)) && (count < maxCount))
             {
                 // Calculate Mandelbrot function 
                 // z = z*z + c where z is a complex number 
 
-                // tempx = z_real*_real - z_imaginary*z_imaginary + c_real 
-                const auto tempx = zx * zx - zy * zy + cx;
+                // tempX = z_real*_real - z_imaginary*z_imaginary + c_real 
+                const auto tempX = zx * zx - zy * zy + cx;
 
                 // 2*z_real*z_imaginary + c_imaginary 
                 zy = 2 * zx * zy + cy;
 
-                // Updating z_real = tempx 
-                zx = tempx;
+                // Updating z_real = tempX 
+                zx = tempX;
 
                 // Increment count 
                 count = count + 1;
             }
 
+            auto adjustedCount = static_cast<float>(count);
+            // Used to avoid floating point issues with points inside the set.
+            if (count < maxCount)
+            {
+                // sqrt of inner term removed using log simplification rules.
+                const auto logZn = static_cast<float>(log(zx * zx + zy * zy) / 2);
+                const auto nu = static_cast<float>(log(logZn / log(2)) / log(2));
+                // Rearranging the potential function.
+                // Dividing log_zn by log(2) instead of log(N = 1<<8)
+                // because we want the entire palette to range from the
+                // center to radius 2, NOT our bailout radius.
+                adjustedCount = count + 1 - nu;
+            }
 
             // To display the created fractal 
             const auto index = y * xMax + x;
-            pixels[index] = count;
-            histogram[count]++;
+
+            pixels[index] = static_cast<uint8_t>(255 * adjustedCount / maxCount);
         }
     }
 
-    // Get the total number of values in the histogram.
-    const auto total = xMax * yMax;
-
-    std::vector<uint8_t> outputPixels;
-
-    for(auto pixel : pixels)
-    {
-        auto hue = 0.0f;
-        for(auto i = 0; i < pixel; ++i)
-        {
-            hue += static_cast<float>(histogram[i]) / total;
-        }
-
-        // Take the count and turn it into a number between 0-255
-        uint8_t adjustedHue = hue * 255;
-
-        outputPixels.push_back(adjustedHue);
-    }
-
-
-    return outputPixels;
+    return pixels;
 }
 
 // Driver code 
@@ -132,18 +122,17 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    for (auto i = 5; i < 100; ++i)
+    for (auto i = 5; i < MAX_ITERATIONS; ++i)
     {
-        MAXCOUNT = i;
         // setting the left, top, xside and yside 
         // for the screen and image to be displayed 
-        const auto left = -2.0f;
+        const auto left = -2.5f;
         const auto top = -1.25f;
-        const auto xside = 1.5f * static_cast<float>(xMax)/yMax;
+        const auto xside = 2.5f * static_cast<float>(xMax) / yMax;
         const auto yside = 2.5f;
 
         // Function calling 
-        auto pixelColor = fractal(left, top, xside, yside, xMax, yMax);
+        auto pixelColor = fractal(left, top, xside, yside, xMax, yMax, i);
 
         auto pixelMap = std::vector<uint8_t>();
         for (auto pixel : pixelColor)

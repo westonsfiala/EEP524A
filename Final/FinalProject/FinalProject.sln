@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.27130.2027
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FinalProject", "FinalProject\FinalProject.vcxproj", "{3A613AC9-F2D9-4220-A311-13E0D88FE565}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SerialMandelbrot", "SerialMandelbrot\SerialMandelbrot.vcxproj", "{ED30766E-8136-4C97-86A5-11BCB1A025C3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{3A613AC9-F2D9-4220-A311-13E0D88FE565}.Release|x64.Build.0 = Release|x64
 		{3A613AC9-F2D9-4220-A311-13E0D88FE565}.Release|x86.ActiveCfg = Release|Win32
 		{3A613AC9-F2D9-4220-A311-13E0D88FE565}.Release|x86.Build.0 = Release|Win32
+		{ED30766E-8136-4C97-86A5-11BCB1A025C3}.Debug|x64.ActiveCfg = Debug|x64
+		{ED30766E-8136-4C97-86A5-11BCB1A025C3}.Debug|x64.Build.0 = Debug|x64
+		{ED30766E-8136-4C97-86A5-11BCB1A025C3}.Debug|x86.ActiveCfg = Debug|Win32
+		{ED30766E-8136-4C97-86A5-11BCB1A025C3}.Debug|x86.Build.0 = Debug|Win32
+		{ED30766E-8136-4C97-86A5-11BCB1A025C3}.Release|x64.ActiveCfg = Release|x64
+		{ED30766E-8136-4C97-86A5-11BCB1A025C3}.Release|x64.Build.0 = Release|x64
+		{ED30766E-8136-4C97-86A5-11BCB1A025C3}.Release|x86.ActiveCfg = Release|Win32
+		{ED30766E-8136-4C97-86A5-11BCB1A025C3}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

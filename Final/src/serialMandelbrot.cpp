@@ -11,15 +11,27 @@
 #include <ostream>
 #include <iostream>
 #include <SDL.h>
+#include <chrono>
+#include <complex>
 
 static const auto xMax = 1920;
 static const auto yMax = 1080;
 static auto MAX_ITERATIONS = 1000;
+static const auto ZOOM = 1.0f;
+static const auto CENTER = std::make_pair(0,0);
 
-// Function to draw mandelbrot set 
-std::vector<uint8_t> fractal(const float left, const float top, const float xSide, const float ySide, const int xMax, const int yMax, const int maxCount)
+static const float DEFAULT_FIT = 2.5f;
+
+struct mandelbrotSaveState
 {
-    auto pixels = std::vector<uint8_t>(xMax * yMax, 0);
+    std::complex<float> lastComplex;
+    std::complex<float> constantComplex;
+    uint32_t lastCount;
+};
+
+std::vector<mandelbrotSaveState> generateZeroState(const float left, const float top, const float xSide, const float ySide, const int xMax, const int yMax)
+{
+    std::vector<mandelbrotSaveState> saveStates;
 
     // setting up the xscale and yscale 
     const auto xScale = xSide / xMax;
@@ -32,17 +44,84 @@ std::vector<uint8_t> fractal(const float left, const float top, const float xSid
     {
         for (auto x = 0; x < xMax; x++)
         {
-            // c_real 
-            const auto cx = x * xScale + left;
+            mandelbrotSaveState saveState;
+            saveState.constantComplex = std::complex<float>(x * xScale + left, y * yScale + top);
+            saveState.lastComplex = std::complex<float>(0, 0);
+            saveState.lastCount = 0;
 
-            // c_imaginary 
-            const auto cy = y * yScale + top;
+            saveStates.push_back(saveState);
+        }
+    }
 
-            // z_real 
-            float zx = 0;
+    return saveStates;
+}
 
-            // z_imaginary 
-            float zy = 0;
+// Function to draw mandelbrot set 
+std::vector<uint8_t> fractalSaveState(std::vector<mandelbrotSaveState> &lastState, const int maxCount, const int order)
+{
+    auto pixels = std::vector<uint8_t>(lastState.size(), 0);
+
+    auto index = 0;
+
+    for (auto& saveState : lastState)
+    {
+        // Calculate whether c(c_real + c_imaginary) belongs 
+        // to the Mandelbrot set or not and draw a pixel 
+        // at coordinates (x, y) accordingly 
+        // If you reach the Maximum number of iterations 
+        // and If the distance from the origin is 
+        // greater than 2 exit the loop 
+        while (abs(saveState.lastComplex) < 1 << 8 && saveState.lastCount < maxCount)
+        {
+            // Perform the next calculation.
+            saveState.lastComplex = pow(saveState.lastComplex, order) + saveState.constantComplex;
+
+            // Increment count 
+            saveState.lastCount++;
+        }
+
+        auto adjustedCount = static_cast<float>(saveState.lastCount);
+        // Used to avoid floating point issues with points inside the set.
+        if (saveState.lastCount < maxCount)
+        {
+            // sqrt of inner term removed using log simplification rules.
+            const auto logZn = static_cast<float>(log(abs(pow(saveState.lastComplex.real(), 2) + pow(saveState.lastComplex.imag(), 2))) / 2);
+            const auto nu = static_cast<float>(log(logZn / log(order)) / log(order));
+            // Rearranging the potential function.
+            // Dividing log_zn by log(2) instead of log(N = 1<<8)
+            // because we want the entire palette to range from the
+            // center to radius 2, NOT our bailout radius.
+            adjustedCount = saveState.lastCount + 1 - nu;
+        }
+
+        pixels[index] = 255 - static_cast<uint8_t>(255 * adjustedCount / maxCount);
+        ++index;
+    }
+
+    return pixels;
+}
+
+// Function to draw mandelbrot set 
+std::vector<uint8_t> fractal(const float left, const float top, const float xSide, const float ySide, const int xMax, const int yMax, const int maxCount, const int order)
+{
+    auto pixels = std::vector<uint8_t>(xMax * yMax, 0);
+    // setting up the xscale and yscale 
+    const auto xScale = xSide / xMax;
+    const auto yScale = ySide / yMax;
+
+    // scanning every point in that rectangular area. 
+    // Each point represents a Complex number (x + yi). 
+    // Iterate that complex number 
+    for (auto y = 0; y < yMax; y++)
+    {
+        for (auto x = 0; x < xMax; x++)
+        {
+            // The constant that is added each time.
+            auto complexConstant = std::complex<float>(x * xScale + left, y * yScale + top);
+
+            // The number that will be iterated over.
+            auto complexCalculated = std::complex<float>(0, 0);
+
             auto count = 0;
 
             // Calculate whether c(c_real + c_imaginary) belongs 
@@ -51,19 +130,10 @@ std::vector<uint8_t> fractal(const float left, const float top, const float xSid
             // If you reach the Maximum number of iterations 
             // and If the distance from the origin is 
             // greater than 2 exit the loop 
-            while ((zx * zx + zy * zy < (1 << 16)) && (count < maxCount))
+            while (abs(complexCalculated) < 1<<8 && count < maxCount)
             {
-                // Calculate Mandelbrot function 
-                // z = z*z + c where z is a complex number 
 
-                // tempX = z_real*_real - z_imaginary*z_imaginary + c_real 
-                const auto tempX = zx * zx - zy * zy + cx;
-
-                // 2*z_real*z_imaginary + c_imaginary 
-                zy = 2 * zx * zy + cy;
-
-                // Updating z_real = tempX 
-                zx = tempX;
+                complexCalculated = pow(complexCalculated, order) + complexConstant;
 
                 // Increment count 
                 count = count + 1;
@@ -74,8 +144,8 @@ std::vector<uint8_t> fractal(const float left, const float top, const float xSid
             if (count < maxCount)
             {
                 // sqrt of inner term removed using log simplification rules.
-                const auto logZn = static_cast<float>(log(zx * zx + zy * zy) / 2);
-                const auto nu = static_cast<float>(log(logZn / log(2)) / log(2));
+                const auto logZn = static_cast<float>(log(abs(pow(complexCalculated.real(),2) + pow(complexCalculated.imag(), 2))) / 2);
+                const auto nu = static_cast<float>(log(logZn / log(order)) / log(order));
                 // Rearranging the potential function.
                 // Dividing log_zn by log(2) instead of log(N = 1<<8)
                 // because we want the entire palette to range from the
@@ -86,7 +156,7 @@ std::vector<uint8_t> fractal(const float left, const float top, const float xSid
             // To display the created fractal 
             const auto index = y * xMax + x;
 
-            pixels[index] = static_cast<uint8_t>(255 * adjustedCount / maxCount);
+            pixels[index] = 255 - static_cast<uint8_t>(255 * adjustedCount / maxCount);
         }
     }
 
@@ -122,17 +192,22 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    for (auto i = 5; i < MAX_ITERATIONS; ++i)
-    {
-        // setting the left, top, xside and yside 
-        // for the screen and image to be displayed 
-        const auto left = -2.5f;
-        const auto top = -1.25f;
-        const auto xside = 2.5f * static_cast<float>(xMax) / yMax;
-        const auto yside = 2.5f;
+    // Get the Screen Ratio
+    const auto screenRatio = static_cast<float>(xMax) / yMax;
 
+    // Center it and set the zoom level.
+    // I don't know why this number is needed, but it centers it.
+    const auto left = (-DEFAULT_FIT + 0.28125f) / ZOOM - CENTER.first;
+    const auto top = -DEFAULT_FIT / 2 / ZOOM + CENTER.second;
+    const auto xSide = 2.5f * screenRatio / ZOOM;
+    const auto ySide = 2.5f / ZOOM;
+
+    const auto startTimeSerial = std::chrono::system_clock::now();
+
+    for (auto i = MAX_ITERATIONS - 3; i < MAX_ITERATIONS; ++i)
+    {
         // Function calling 
-        auto pixelColor = fractal(left, top, xside, yside, xMax, yMax, i);
+        auto pixelColor = fractal(left, top, xSide, ySide, xMax, yMax, i, 3);
 
         auto pixelMap = std::vector<uint8_t>();
         for (auto pixel : pixelColor)
@@ -167,11 +242,60 @@ int main(int argc, char** argv)
         SDL_DestroyTexture(tex);
     }
 
+    const auto endTimeSerial = std::chrono::system_clock::now();
+
+    const auto startTimeSpeedup = std::chrono::system_clock::now();
+
+    auto initialState = generateZeroState(left, top, xSide, ySide, xMax, yMax);
+    for (auto i = MAX_ITERATIONS-3; i < MAX_ITERATIONS; ++i)
+    {
+        // Function calling 
+        auto pixelColor = fractalSaveState(initialState, i, 3);
+
+        auto pixelMap = std::vector<uint8_t>();
+        for (auto pixel : pixelColor)
+        {
+            pixelMap.push_back(pixel);
+            pixelMap.push_back(pixel);
+            pixelMap.push_back(pixel);
+            pixelMap.push_back(255);
+        }
+
+        // Create our surface from the 
+        SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(static_cast<void*>(pixelMap.data()), xMax, yMax, 32, xMax * 4, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+
+        SDL_Texture* tex = SDL_CreateTextureFromSurface(ren, surf);
+        SDL_FreeSurface(surf);
+        if (tex == nullptr)
+        {
+            SDL_DestroyRenderer(ren);
+            SDL_DestroyWindow(win);
+            std::cout << "SDL_CreateTextureFromSurface Error: " << SDL_GetError() << std::endl;
+            SDL_Quit();
+            return 1;
+        }
+
+        //First clear the renderer
+        SDL_RenderClear(ren);
+        //Draw the texture
+        SDL_RenderCopy(ren, tex, nullptr, nullptr);
+        //Update the screen
+        SDL_RenderPresent(ren);
+        // Get rid of the texture
+        SDL_DestroyTexture(tex);
+    }
+
+    const auto endTimeSpeedup = std::chrono::system_clock::now();
+
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
     SDL_Quit();
 
-    //stbi_write_png("C:/work/GitHub/EEP524A/Final/output/fractal.png", xMax, yMax, 3, pixelMap.data(), xMax * 3);
+    std::chrono::duration<double> diffSerial = endTimeSerial - startTimeSerial;
+    std::chrono::duration<double> diffSpeedup = endTimeSpeedup - startTimeSpeedup;
+
+    std::cout << "Run Time Serial for " << std::to_string(MAX_ITERATIONS) << " = " << diffSerial.count() << " seconds" << std::endl;
+    std::cout << "Run Time Speedup for " << std::to_string(MAX_ITERATIONS) << " = " << diffSpeedup.count() << " seconds" << std::endl;
 
     return 0;
 }

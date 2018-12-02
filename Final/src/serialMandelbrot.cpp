@@ -174,9 +174,8 @@ int main(int argc, char** argv)
     }
 
     // Create the SDL window that we will use.
-    SDL_Window* win = SDL_CreateWindow("Hello World!", 0, 0, xMax, yMax, SDL_WINDOW_SHOWN);
-    if (win == nullptr)
-    {
+    SDL_Window *win = SDL_CreateWindow("Mandelbrot Set", 0, 0, xMax, yMax, SDL_WINDOW_SHOWN);
+    if (win == nullptr) {
         std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
         SDL_Quit();
         return 1;

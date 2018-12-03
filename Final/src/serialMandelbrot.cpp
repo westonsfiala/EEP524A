@@ -20,7 +20,7 @@ static const auto MAX_ITERATIONS = 100;
 
 static const auto ZOOM = 1.0f;
 static const auto CENTER = std::make_pair(0, 0);
-static const auto ORDER = 2.0f;
+static const auto ORDER = 8.0f;
 
 static const float DEFAULT_FIT = 2.5f;
 static const auto ESCAPE_NUM = static_cast<float>(std::min<uint32_t>(UINT32_MAX, 1 << 2 * static_cast<int>(ORDER)));
@@ -83,9 +83,8 @@ void runFractal(MandelbrotSaveState& saveState, const uint32_t& maxCount)
     // Used to avoid floating point issues with points inside the set.
     if (saveState.count < maxCount)
     {
-        // sqrt of inner term removed using log simplification rules.
         const auto logZn = static_cast<float>(log(abs(saveState.complex)));
-        const auto nu = static_cast<float>(log(logZn / log(ORDER)) / log(ORDER));
+        const auto nu = static_cast<float>(log(logZn / log(ESCAPE_NUM)) / log(ORDER));
         // Rearranging the potential function.
         // Dividing log_zn by log(2) instead of log(N = 1<<8)
         // because we want the entire palette to range from the

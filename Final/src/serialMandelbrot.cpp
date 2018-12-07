@@ -16,11 +16,11 @@
 
 static const auto MAX_X = 1920;
 static const auto MAX_Y = 1080;
-static const auto MAX_ITERATIONS = 100;
+static const auto MAX_ITERATIONS = 1000;
 
 static const auto ZOOM = 1.0f;
 static const auto CENTER = std::make_pair(0, 0);
-static const auto ORDER = 8.0f;
+static const auto ORDER = 3.0f;
 
 static const float DEFAULT_FIT = 2.5f;
 static const auto ESCAPE_NUM = static_cast<float>(std::min<uint32_t>(UINT32_MAX, 1 << 2 * static_cast<int>(ORDER)));

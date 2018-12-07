@@ -276,4 +276,32 @@ namespace Helper
         std::cout << callName << "(...) failed with code:" << clGetErrorString(errorCode) << std::endl;
         return false;
     }
+
+std::vector<Helper::MandelbrotSaveState> generateZeroState(const float left, const float top, const float xSide, const float ySide, const uint32_t xMax, const uint32_t yMax)
+{
+    std::vector<Helper::MandelbrotSaveState> saveStates;
+
+    // setting up the xscale and yscale 
+    const auto xScale = xSide / xMax;
+    const auto yScale = ySide / yMax;
+
+    // scanning every point in that rectangular area. 
+    // Each point represents a Complex number (x + yi). 
+    // Iterate that complex number 
+    for (auto y = 0; y < yMax; y++)
+    {
+        for (auto x = 0; x < xMax; x++)
+        {
+            Helper::MandelbrotSaveState saveState;
+            saveState.constantComplex = { x * xScale + left, y * yScale + top };
+            saveState.complex = saveState.constantComplex;
+            saveState.count = 1;
+            saveState.adjustedCount = 1;
+
+            saveStates.push_back(saveState);
+        }
+    }
+
+    return saveStates;
+}
 }

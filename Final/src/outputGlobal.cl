@@ -1,17 +1,14 @@
-kernel void outputGlobal (
-    global int* output
+
+#include "../../src/clcomplex.h"
+
+kernel void OutputGlobal (
+    global const float2* input,
+    global float2* output
 )
 {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-    int z = get_global_id(2);
+    int xId = get_global_id(0);
 
-    int xMax = get_global_size(0);
-    int yMax = get_global_size(1);
-    int zMax = get_global_size(2);
+    float2 order = { xId, 0.0f };
 
-    int index = z * xMax * yMax + y * xMax + x;
-    int value = z << 16 | y << 8 | x;
-
-    output[index] = value;
+    output[xId] = cpowf(input[xId], order) + order;
 }

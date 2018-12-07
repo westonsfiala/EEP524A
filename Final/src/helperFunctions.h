@@ -6,6 +6,14 @@
 
 namespace Helper
 {
+    struct MandelbrotSaveState
+    {
+        cl_float2 complex;
+        cl_float2 constantComplex;
+        uint32_t count;
+        float adjustedCount;
+    };
+
     std::string slurp(const std::string& fileName);
     double variance(const std::vector<double>& samples);
     double standardDeviation(const std::vector<double>& samples);
@@ -15,4 +23,6 @@ namespace Helper
     uint8_t* convert3To4Channel(uint8_t* threeChannelData, const uint32_t& numPixels);
     std::string clGetErrorString(const int &errorCode);
     bool processClCallStatus(const std::string& callName, const int &errorCode);
+
+std::vector<Helper::MandelbrotSaveState> generateZeroState(float left, float top, float xSide, float ySide, uint32_t xMax, uint32_t yMax);
 }

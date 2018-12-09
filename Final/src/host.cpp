@@ -30,7 +30,7 @@ static const std::string OUTPUT_GLOBAL_KERNEL_FILE = SRC_DIRECTORY + OUTPUT_GLOB
 
 static const auto MAX_X = 1920;
 static const auto MAX_Y = 1080;
-static const auto MAX_ITERATIONS = 1000;
+static const auto MAX_ITERATIONS = 100;
 
 static const auto ZOOM = 1.0f;
 static const auto CENTER = std::make_pair(0.0f, 0.0f);
@@ -258,13 +258,24 @@ int main(int argc, char** argv)
     const cl::Buffer outputBuffer(initialState.begin(), initialState.end(), false);
 
     // Set the global colors so that it is a fast lookup.
-    Helper::setGlobalColors(MAX_ITERATIONS, { 2,0 }, { 3,1 }, { 4,3 });
+    Helper::setGlobalColorsFade({});
+
+    // Get the bailout value.
+    const auto bailout = std::min<float>(pow(100.0f, ORDER), 2.0f);
+    std::vector<uint8_t> pixel(4, 0);
+
+    std::vector<uint8_t> pixelMap(MAX_Y * MAX_X * 4, 0);
 
     const auto startTime = std::chrono::system_clock::now();
 
+    std::chrono::duration<double> kernelRunTime;
+    std::chrono::duration<double> pixelGetTime;
+    std::chrono::duration<double> pixelPutTime;
+
     for (uint32_t i = 5; i < MAX_ITERATIONS; ++i)
     {
-        const auto bailout = pow(100.0f, ORDER) + 2;
+
+        const auto startKernelRun = std::chrono::system_clock::now();
         runKernel(
             cl::EnqueueArgs(cl::NDRange(MAX_X, MAX_Y)),
             outputBuffer,
@@ -275,24 +286,42 @@ int main(int argc, char** argv)
 
         cl::copy(outputBuffer, initialState.begin(), initialState.end());
 
-        auto pixelMap = std::vector<uint8_t>();
-        for (auto fractalState : initialState)
+        const auto endKernelRun = std::chrono::system_clock::now();
+
+        kernelRunTime += endKernelRun - startKernelRun;
+
+        const auto startPixelGet = std::chrono::system_clock::now();
+
+        auto index = 0;
+        for (const auto &fractalState : initialState)
         {
             // Color
-            // If we are in the set, set black.
+            // If we are in the set, put black.
             if(fractalState.count == i)
             {
-                pixelMap.insert(pixelMap.end(), { 0, 0, 0, 0xFF });
+                pixelMap[index] = 0;
+                pixelMap[index + 1] = 0;
+                pixelMap[index + 2] = 0;
+                pixelMap[index + 3] = 0xFF;
             }
             // Not in the set, do some coloring.
             else
             {
-                auto colors = Helper::getColors(fractalState.count, fractalState.adjustedCount);
+                Helper::getColors(fractalState.count, fractalState.adjustedCount, pixel);
 
-                // Push the colors we got to the end of the list.
-                pixelMap.insert(pixelMap.end(), colors.cbegin(), colors.cend());
+                pixelMap[index] = pixel[0];
+                pixelMap[index + 1] = pixel[1];
+                pixelMap[index + 2] = pixel[2];
+                pixelMap[index + 3] = pixel[3];
             }
+            index += 4;
         }
+
+        const auto endPixelGet = std::chrono::system_clock::now();
+
+        pixelGetTime += endPixelGet - startPixelGet;
+
+        const auto startPixelPut = std::chrono::system_clock::now();
 
         // Create our surface from the 
         SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(static_cast<void*>(pixelMap.data()), MAX_X, MAX_Y, 32, MAX_X * 4, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
@@ -316,6 +345,10 @@ int main(int argc, char** argv)
         SDL_RenderPresent(ren);
         // Get rid of the texture
         SDL_DestroyTexture(tex);
+
+        const auto endPixelPut = std::chrono::system_clock::now();
+
+        pixelPutTime += endPixelPut - startPixelPut;
     }
 
     const auto endTime = std::chrono::system_clock::now();
@@ -323,7 +356,9 @@ int main(int argc, char** argv)
     std::chrono::duration<double> diff = endTime - startTime;
 
     std::cout << "Run Time Mandelbrot for " << std::to_string(MAX_ITERATIONS) << " = " << diff.count() << " seconds" << std::endl;
-
+    std::cout << "Kernel Run Time = " << kernelRunTime.count() << " seconds" << std::endl;
+    std::cout << "Pixel Get Time = " << pixelGetTime.count() << " seconds" << std::endl;
+    std::cout << "Pixel Put Time = " << pixelPutTime.count() << " seconds" << std::endl;
 
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);

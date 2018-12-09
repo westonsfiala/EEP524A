@@ -277,7 +277,7 @@ bool processClCallStatus(const std::string& callName, const int& errorCode)
     return false;
 }
 
-void setGlobalColors(const uint32_t maxCount, std::pair<uint8_t, uint8_t> redPair, std::pair<uint8_t, uint8_t> greenPair, std::pair<uint8_t, uint8_t> bluePair)
+void setGlobalColorsPattern(const uint32_t maxCount, std::pair<uint8_t, uint8_t> redPair, std::pair<uint8_t, uint8_t> greenPair, std::pair<uint8_t, uint8_t> bluePair)
 {
     // Clear away any old colors.
     gColors.clear();
@@ -295,7 +295,7 @@ void setGlobalColors(const uint32_t maxCount, std::pair<uint8_t, uint8_t> redPai
     }
 
     // Push one extra black pixel color to the back.
-    gColors.push_back({ 0xFF, 0xFF, 0xFF});
+    gColors.push_back({ 0, 0, 0});
 }
 
 std::vector<uint8_t> getColorHelper(const uint32_t count, const uint32_t maxCount, std::pair<uint8_t, uint8_t> &redPair, std::pair<uint8_t, uint8_t> &greenPair, std::pair<uint8_t, uint8_t> &bluePair)
@@ -373,11 +373,36 @@ std::vector<uint8_t> getColorHelper(const uint32_t count, const uint32_t maxCoun
     return { red, green, blue };
 }
 
-std::vector<uint8_t> getColors(const uint32_t count, const float adjust)
+void setGlobalColorsFade(std::vector<std::vector<uint8_t>> colorList)
 {
+    gColors.clear();
+
+    // If the color map is empty, fill it with some random stuff.
+    if(colorList.empty())
+    {
+        colorList.push_back({ 255, 0, 0 }); // Red
+        colorList.push_back({ 0, 255, 0 }); // Green
+        colorList.push_back({ 0, 0, 255 }); // Blue
+        colorList.push_back({ 255, 255, 255 }); // White
+    }
+    
+    // We need at least 2 colors, if we only have one add white.
+    if(colorList.size() == 1)
+    {
+        colorList.push_back({ 255, 255,255 });
+    }
+
+    gColors = colorList;
+}
+
+void getColors(const uint32_t count, const float adjust, std::vector<uint8_t> &pixel)
+{
+    const auto index1 = (count + 1) % gColors.size();
+    const auto index2 = count % gColors.size();
+
     // Get all the colors based off of what was given to us, and the one plus of what was given to us.
-    auto colors1 = gColors[count+1];
-    auto colors2 = gColors[count];
+    auto colors1 = gColors[index1];
+    auto colors2 = gColors[index2];
 
     const auto weight1 = adjust;
     const auto weight2 = 1 - weight1;
@@ -386,7 +411,10 @@ std::vector<uint8_t> getColors(const uint32_t count, const float adjust)
     const auto green = static_cast<uint8_t>(colors1[1] * weight1 + colors2[1] * weight2);
     const auto blue = static_cast<uint8_t>(colors1[2] * weight1 + colors2[2] * weight2);
 
-    return {red, green, blue, 0xFF};
+    pixel[0] = red;
+    pixel[1] = green;
+    pixel[2] = blue;
+    pixel[3] = 0xFF;
 }
 
 std::vector<MandelbrotSaveState> generateZeroState(const float left, const float top, const float xSide, const float ySide, const uint32_t xMax, const uint32_t yMax)

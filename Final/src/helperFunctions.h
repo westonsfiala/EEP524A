@@ -25,8 +25,13 @@ namespace Helper
     uint8_t* convert3To4Channel(uint8_t* threeChannelData, const uint32_t& numPixels);
     std::string clGetErrorString(const int &errorCode);
     bool processClCallStatus(const std::string& callName, const int &errorCode); 
-    void setGlobalColors(uint32_t maxCount, std::pair<uint8_t, uint8_t> redPair, std::pair<uint8_t, uint8_t> greenPair, std::pair<uint8_t, uint8_t> bluePair);
+
+    void setGlobalColorsPattern(uint32_t maxCount, std::pair<uint8_t, uint8_t> redPair, std::pair<uint8_t, uint8_t> greenPair, std::pair<uint8_t, uint8_t> bluePair);
     std::vector<uint8_t> getColorHelper(uint32_t count, uint32_t maxCount, std::pair<uint8_t, uint8_t> &redPair, std::pair<uint8_t, uint8_t> &greenPair, std::pair<uint8_t, uint8_t> &bluePair);
-    std::vector<uint8_t> getColors(uint32_t count, float adjust);
+
+    void setGlobalColorsFade(std::vector<std::vector<uint8_t>> colorList);
+
+    void getColors(uint32_t count, float adjust, std::vector<uint8_t>& pixels);
+
     std::vector<Helper::MandelbrotSaveState> generateZeroState(float left, float top, float xSide, float ySide, uint32_t xMax, uint32_t yMax);
 }

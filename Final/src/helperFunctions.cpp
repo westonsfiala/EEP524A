@@ -383,7 +383,6 @@ void setGlobalColorsFade(std::vector<std::vector<uint8_t>> colorList)
         colorList.push_back({ 255, 0, 0 }); // Red
         colorList.push_back({ 0, 255, 0 }); // Green
         colorList.push_back({ 0, 0, 255 }); // Blue
-        colorList.push_back({ 255, 255, 255 }); // White
     }
     
     // We need at least 2 colors, if we only have one add white.
@@ -416,6 +415,21 @@ void getColors(const uint32_t count, const float adjust, std::vector<uint8_t> &p
     pixel[2] = blue;
     pixel[3] = 0xFF;
 }
+
+std::vector<uint8_t> getAssignedColors()
+{
+    std::vector<uint8_t> colors;
+    for(auto pixel : gColors)
+    {
+        for(auto color : pixel)
+        {
+            colors.push_back(color);
+        }
+    }
+    return colors;
+}
+
+
 
 std::vector<MandelbrotSaveState> generateZeroState(const float left, const float top, const float xSide, const float ySide, const uint32_t xMax, const uint32_t yMax)
 {

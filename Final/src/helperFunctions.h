@@ -33,5 +33,8 @@ namespace Helper
 
     void getColors(uint32_t count, float adjust, std::vector<uint8_t>& pixels);
 
+    std::vector<uint8_t> getAssignedColors();
+    inline uint32_t getNumAssignedColors() { return static_cast<uint32_t>(gColors.size()); }
+
     std::vector<Helper::MandelbrotSaveState> generateZeroState(float left, float top, float xSide, float ySide, uint32_t xMax, uint32_t yMax);
 }

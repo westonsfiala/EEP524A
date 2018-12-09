@@ -12,6 +12,7 @@
 #include <SDL.h>
 #include <chrono>
 #include <algorithm>
+#include <assert.h>
 
 /*************************************************************************
 * CHANGE THE FOLLOWING LINES TO WHERE EVER YOU HAVE EVERYTHING MAPPED TO.
@@ -29,14 +30,13 @@ static const std::string OUTPUT_GLOBAL_KERNEL_FILE = SRC_DIRECTORY + OUTPUT_GLOB
 
 static const auto MAX_X = 1920;
 static const auto MAX_Y = 1080;
-static const auto MAX_ITERATIONS = 100;
+static const auto MAX_ITERATIONS = 1000;
 
 static const auto ZOOM = 1.0f;
-static const auto CENTER = std::make_pair(0, 0);
-static const auto ORDER = 8.5f;
+static const auto CENTER = std::make_pair(0.0f, 0.0f);
+static const auto ORDER = 4.0f;
 
 static const float DEFAULT_FIT = 2.5f;
-static const auto ESCAPE_NUM = static_cast<float>(std::min<uint32_t>(UINT32_MAX, 1 << 2 * static_cast<int>(ORDER)));
 
 int main(int argc, char** argv)
 {
@@ -145,6 +145,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    /*
     const auto outputKernelString = Helper::slurp(OUTPUT_GLOBAL_KERNEL_FILE);
     const std::vector<std::string> outputProgramStrings{ outputKernelString };
 
@@ -165,36 +166,42 @@ int main(int argc, char** argv)
 
 
     auto outputRunKernel = cl::KernelFunctor<
-        cl::fine_svm_vector<cl_float2>,
-        cl::fine_svm_vector<cl_float2>
+        cl::Buffer,
+        cl::Buffer
     >(outputGlobalProgram, OUTPUT_GLOBAL_KERNEL_NAME);
 
-    cl_float2 ones = { 1.0f, 2.0f };
-    cl_float2 zeros = { -1.0f, -1.0f };
-    const cl::fine_svm_vector<cl_float2> inputVector(10, ones);
-    cl::fine_svm_vector<cl_float2> outputVector(10, zeros);
+    cl_float2 ones = { 1.0f, 1.0f };
+    cl_float2 negativeOnes = { -1.0f, -1.0f };
+
+    std::vector<cl_float2> inputVector(10, ones);
+    std::vector<cl_float2> outputVector(10, negativeOnes);
+
+    const cl::Buffer inputBuffer(inputVector.begin(), inputVector.end(), true);
+    const cl::Buffer outputBuffer2(outputVector.begin(), outputVector.end(), false);
 
     outputRunKernel(
         cl::EnqueueArgs(cl::NDRange(10)),
-        inputVector,
-        outputVector
+        inputBuffer,
+        outputBuffer2
     );
 
-    cl::mapSVM(outputVector);
+    cl::copy(outputBuffer2, outputVector.begin(), outputVector.end());
 
-    // Get the kernel string for the output global ID kernel.
+    */
+
+    // Get the kernel string for the mandelbrot kernel.
     const auto kernelString = Helper::slurp(MANDELBROT_KERNEL_FILE);
     const std::vector<std::string> programStrings {kernelString};
 
-    cl::Program MandelbrotProgram(programStrings);
+    cl::Program mandelbrotProgram(programStrings);
     try {
         // ReSharper disable once CppExpressionWithoutSideEffects
-        MandelbrotProgram.build("-cl-std=CL2.0");
+        mandelbrotProgram.build("-cl-std=CL2.0");
     }
     catch (...) {
         // Print build info for all devices
         auto buildErr = CL_SUCCESS;
-        auto buildInfo = MandelbrotProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(&buildErr);
+        auto buildInfo = mandelbrotProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(&buildErr);
         for (auto &pair : buildInfo) {
             std::cerr << pair.second << std::endl << std::endl;
         }
@@ -241,23 +248,29 @@ int main(int argc, char** argv)
     auto runKernel = cl::KernelFunctor<
         cl::Buffer,
         uint32_t,
+        cl_float,
         cl_float
-        >(MandelbrotProgram, MANDELBROT_KERNEL_NAME);
+        >(mandelbrotProgram, MANDELBROT_KERNEL_NAME);
 
 
     auto initialState = Helper::generateZeroState(left, top, xSide, ySide, MAX_X, MAX_Y);
 
-    cl::Buffer outputBuffer(initialState.begin(), initialState.end(), false);
+    const cl::Buffer outputBuffer(initialState.begin(), initialState.end(), false);
+
+    // Set the global colors so that it is a fast lookup.
+    Helper::setGlobalColors(MAX_ITERATIONS, { 2,0 }, { 3,1 }, { 4,3 });
 
     const auto startTime = std::chrono::system_clock::now();
 
     for (uint32_t i = 5; i < MAX_ITERATIONS; ++i)
     {
+        const auto bailout = pow(100.0f, ORDER) + 2;
         runKernel(
             cl::EnqueueArgs(cl::NDRange(MAX_X, MAX_Y)),
             outputBuffer,
             i,
-            ORDER
+            ORDER,
+            bailout
             );
 
         cl::copy(outputBuffer, initialState.begin(), initialState.end());
@@ -265,11 +278,20 @@ int main(int argc, char** argv)
         auto pixelMap = std::vector<uint8_t>();
         for (auto fractalState : initialState)
         {
-            auto pixelValue = static_cast<uint8_t>(255 - (255 * fractalState.adjustedCount / i));
-            pixelMap.push_back(pixelValue);
-            pixelMap.push_back(pixelValue);
-            pixelMap.push_back(pixelValue);
-            pixelMap.push_back(255);
+            // Color
+            // If we are in the set, set black.
+            if(fractalState.count == i)
+            {
+                pixelMap.insert(pixelMap.end(), { 0, 0, 0, 0xFF });
+            }
+            // Not in the set, do some coloring.
+            else
+            {
+                auto colors = Helper::getColors(fractalState.count, fractalState.adjustedCount);
+
+                // Push the colors we got to the end of the list.
+                pixelMap.insert(pixelMap.end(), colors.cbegin(), colors.cend());
+            }
         }
 
         // Create our surface from the 

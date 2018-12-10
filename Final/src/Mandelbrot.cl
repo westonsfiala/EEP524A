@@ -63,10 +63,11 @@ kernel void Mandelbrot (
         // Get the value to adjust the count by.
         const float logZn = (float)log10(cabsf(saveState.complex));
         const float adjust = (float)log10(logZn / log10(bailout)) / log10(order);
-        saveState.adjustedCount = 1 - adjust;
+        saveState.adjustedCount = 1.0f - adjust;
+        //saveState.adjustedCount = 0;
 
-        const int index1 = (saveState.count + 1) % numColors;
-        const int index2 = saveState.count % numColors;
+        const int index1 = ((int)floor(saveState.adjustedCount) + saveState.count + 1) % numColors;
+        const int index2 = ((int)floor(saveState.adjustedCount) + saveState.count) % numColors;
 
         //printf("%i %i mod %i -> %i %i\n", (saveState.count + 1), saveState.count, numColors, index1, index2);
 

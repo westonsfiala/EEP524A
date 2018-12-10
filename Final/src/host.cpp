@@ -1,6 +1,7 @@
 // Include the c++ wrapper of openCL and enable exceptions
 #define CL_HPP_ENABLE_EXCEPTIONS
-#define CL_HPP_TARGET_OPENCL_VERSION 200
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#define CL_HPP_TARGET_OPENCL_VERSION 120
 #include <CL/cl2.hpp>
 #include <iostream>
 
@@ -11,7 +12,8 @@
 #include <iostream>
 #include <SDL.h>
 #include <chrono>
-#include <algorithm>
+#include <map>
+#include <numeric>
 #include <assert.h>
 #include <float.h>
 
@@ -29,13 +31,11 @@ static const std::string MANDELBROT_KERNEL_FILE = SRC_DIRECTORY + MANDELBROT_KER
 static const std::string OUTPUT_GLOBAL_KERNEL_NAME = "OutputGlobal";
 static const std::string OUTPUT_GLOBAL_KERNEL_FILE = SRC_DIRECTORY + OUTPUT_GLOBAL_KERNEL_NAME + ".cl";
 
-static const auto MAX_X = 1920;
-static const auto MAX_Y = 1080;
-static const auto MAX_ITERATIONS = 1000;
+static const auto MAX_ITERATIONS = 25;
 
 static const auto ZOOM = 1.0f;
 static const auto CENTER = std::make_pair(0.0f, 0.0f);
-static const auto ORDER = 4.0f;
+static const auto ORDER = 15.0f;
 
 static const float DEFAULT_FIT = 2.5f;
 
@@ -56,7 +56,7 @@ int main(int argc, char** argv)
         const auto extensions = plat.getInfo<CL_PLATFORM_EXTENSIONS>();
 
         // Print out the information about the one we choose.
-        if (version.find("OpenCL 2.") != std::string::npos) {
+        if (version.find("OpenCL 1.") != std::string::npos) {
 
             std::cout << "Platform Info:" << std::endl;
             std::cout << "name: " << name << std::endl;
@@ -83,6 +83,9 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    uint32_t maxWorkGroupSize = 0;
+    std::vector<uint32_t> maxWorkItemSize(3,0);
+
     // Go through the devices in the platform and print out their info.
     try
     {
@@ -102,15 +105,19 @@ int main(int argc, char** argv)
             std::cout << "version: " << version << std::endl;
             const auto maxComputeUnits = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
             std::cout << "maxComputeUnits: " << maxComputeUnits << std::endl;
-            const auto maxWorkItemDimentions = device.getInfo<CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS>();
-            std::cout << "maxWorkItemDimentions: " << maxWorkItemDimentions << std::endl;
-            const auto maxWorkGroupSize = device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
+            const auto maxWorkItemDimensions = device.getInfo<CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS>();
+            std::cout << "maxWorkItemDimensions: " << maxWorkItemDimensions << std::endl;
+            maxWorkGroupSize = static_cast<uint32_t>(device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>());
             std::cout << "maxWorkGroupSize: " << maxWorkGroupSize << std::endl;
-            const auto maxWorkItemSize = device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
+            auto workItemSize = device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
             std::cout << "maxWorkItemSize:" << std::endl; 
-            std::cout << "\tx: " << maxWorkItemSize[0] <<std::endl;
-            std::cout << "\ty: " << maxWorkItemSize[1] << std::endl;
-            std::cout << "\tz: " << maxWorkItemSize[2] << std::endl;
+            std::cout << "\tx: " << workItemSize[0] <<std::endl;
+            std::cout << "\ty: " << workItemSize[1] << std::endl;
+            std::cout << "\tz: " << workItemSize[2] << std::endl;
+            // Save these for the optimizations later.
+            maxWorkItemSize[0] = static_cast<uint32_t>(workItemSize[0]);
+            maxWorkItemSize[1] = static_cast<uint32_t>(workItemSize[1]);
+            maxWorkItemSize[2] = static_cast<uint32_t>(workItemSize[2]);
             const auto preferredVectorWidthFloat = device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT>();
             std::cout << "preferredVectorWidthFloat: " << preferredVectorWidthFloat << std::endl;
             const auto preferredVectorWidthDouble = device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE>();
@@ -119,6 +126,7 @@ int main(int argc, char** argv)
             std::cout << "nativeVectorWidthFloat: " << nativeVectorWidthFloat << std::endl;
             const auto nativeVectorWidthDouble = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>();
             std::cout << "nativeVectorWidthDouble: " << nativeVectorWidthDouble << std::endl;
+            /*
             const auto svmCapabilities = device.getInfo<CL_DEVICE_SVM_CAPABILITIES>();
             std::cout << "svmCapabilities: " << std::endl;
             if (svmCapabilities & CL_DEVICE_SVM_COARSE_GRAIN_BUFFER)
@@ -137,6 +145,7 @@ int main(int argc, char** argv)
             {
                 std::cout << "\tAtomics" << std::endl;
             }
+            */
             std::cout << std::endl;
         }
     }
@@ -197,7 +206,7 @@ int main(int argc, char** argv)
     cl::Program mandelbrotProgram(programStrings);
     try {
         // ReSharper disable once CppExpressionWithoutSideEffects
-        mandelbrotProgram.build("-cl-std=CL2.0");
+        mandelbrotProgram.build("-cl-std=CL1.2");
     }
     catch (...) {
         // Print build info for all devices
@@ -216,27 +225,17 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    // Create the SDL window that we will use.
-    SDL_Window* win = SDL_CreateWindow("Mandelbrot Set", 0, 0, MAX_X, MAX_Y, SDL_WINDOW_SHOWN);
-    if (win == nullptr)
+    SDL_DisplayMode dm;
+    if (SDL_GetCurrentDisplayMode(0, &dm) != 0)
     {
-        std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
-        SDL_Quit();
+        std::cout << "SDL_GetCurrentDisplayMode Error: " << SDL_GetError() << std::endl;
         return 1;
     }
-
-    // Create the Renderer that will render our image into the window.
-    SDL_Renderer* ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (ren == nullptr)
-    {
-        SDL_DestroyWindow(win);
-        std::cout << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
-        SDL_Quit();
-        return 1;
-    }
+    const auto width = dm.w;
+    const auto height = dm.h;
 
     // Get the Screen Ratio
-    const auto screenRatio = static_cast<float>(MAX_X) / MAX_Y;
+    const auto screenRatio = static_cast<float>(width) / height;
 
     // Center it and set the zoom level.
     // I don't know why this number is needed, but it centers it.
@@ -256,7 +255,7 @@ int main(int argc, char** argv)
         cl_float // bailout
         >(mandelbrotProgram, MANDELBROT_KERNEL_NAME);
 
-    std::vector<uint8_t> outputPixels(4 * MAX_Y*MAX_X, 0);
+    std::vector<uint8_t> outputPixels(4 * height*width, 0);
 
     const cl::Buffer outputPixelBuffer(outputPixels.begin(), outputPixels.end(), false);
 
@@ -268,33 +267,136 @@ int main(int argc, char** argv)
 
     const cl::Buffer colorBuffer(setColors.begin(), setColors.end(), true);
 
-    // Get the bailout value.
-    const auto bailout = std::min<float>(std::max<float>(pow(100.0f, ORDER), 2.0f), FLT_MAX);
     std::vector<uint8_t> pixel(4, 0);
 
-    std::vector<uint8_t> pixelMap(MAX_Y * MAX_X * 4, 0);
+    std::vector<uint8_t> pixelMap(height * width * 4, 0);
+
+    std::map<std::pair<uint32_t, uint32_t>, double> timingMap;
+
+    std::cout << "Starting local size optimization." << std::endl;
+
+    for (uint32_t localX = 1; localX <= maxWorkItemSize[0]; localX = localX << 1)
+    {
+        for (uint32_t localY = 1; localY <= maxWorkItemSize[1]; localY = localY << 1)
+        {
+            // don't run any configurations that exceed the max work group size.
+            if(localX * localY > maxWorkGroupSize)
+            {
+                continue;
+            }
+
+            // If we do not divide local sizes into even sections don't run them.
+            if(width % localX != 0 || height % localY != 0)
+            {
+                continue;
+            }
+            std::cout << "Starting timing for x = " << std::to_string(localX) + " y = " << std::to_string(localY) << std::endl;
+            std::vector<double> runTimes;
+            auto mapping = std::make_pair(localX, localY);
+            const auto order = 2.0f;
+            const auto bailout = std::pow(FLT_MAX, 1.0f / (order + 1.0f));
+
+            for(auto runNum = 0; runNum < 5; ++runNum)
+            {
+                // Need to reinitialize every time due to the different orders.
+                auto initialState = Helper::generateZeroState(left, top, xSide, ySide, width, height);
+
+                const cl::Buffer fractalStateBuffer(initialState.begin(), initialState.end(), false);
+
+                // Start the Kernel call.
+                const auto startKernelRun = std::chrono::system_clock::now();
+                try
+                {
+                    runKernel(
+                        cl::EnqueueArgs(cl::NDRange(width, height), cl::NDRange(localX, localY)),
+                        fractalStateBuffer,
+                        outputPixelBuffer,
+                        colorBuffer,
+                        numColors,
+                        MAX_ITERATIONS,
+                        order,
+                        bailout
+                    );
+                }
+                catch (...)
+                {
+                    std::cout << "Error running kernels" << std::endl;
+                    return -1;
+                }
+
+                const auto endKernelRun = std::chrono::system_clock::now();
+
+                auto runTime = endKernelRun - startKernelRun;
+
+                runTimes.push_back(static_cast<double>(runTime.count()));
+            }
+            const auto runTotal = std::accumulate(runTimes.begin(), runTimes.end(), 0.0);
+            timingMap[mapping] = runTotal;
+        }
+    }
+
+    std::cout << "Ending local size optimization." << std::endl;
+
+    auto lowestRunConfig = std::make_pair(1, 1);
+    auto lowestRunTime = DBL_MAX;
+    for(const auto runMapping : timingMap)
+    {
+        const auto config = runMapping.first;
+        const auto time = runMapping.second;
+        if(time < lowestRunTime)
+        {
+            lowestRunTime = time;
+            lowestRunConfig = config;
+        }
+    }
+
+    std::cout << "Configuration chosen : x = " << std::to_string(lowestRunConfig.first) << " y = " << std::to_string(lowestRunConfig.second) << std::endl;
+
+    // Create the SDL window that we will use.
+    SDL_Window* win = SDL_CreateWindow("Mandelbrot Set", 0, 0, width, height, SDL_WINDOW_SHOWN);
+    if (win == nullptr)
+    {
+        std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return 1;
+    }
+
+    // Create the Renderer that will render our image into the window.
+    SDL_Renderer* ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (ren == nullptr)
+    {
+        SDL_DestroyWindow(win);
+        std::cout << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return 1;
+    }
 
     const auto startTime = std::chrono::system_clock::now();
 
-    std::chrono::duration<double> kernelRunTime;
-    std::chrono::duration<double> pixelPutTime;
+    std::chrono::duration<double> kernelRunTime(0);
+    std::chrono::duration<double> pixelPutTime(0);
 
-    for (float order = 1.0f; order < 5.0f; order += 0.01f)
+    for (auto order = 1.0f; order < ORDER; order += 0.01f)
     {
+        // Get the bailout value based off of the want to never get a value to reach infinity.
+        // At low orders, the bailout will be high, at high orders the bailout will be low.
+        // This prevents oddities where you get black bars showing up in the smoothed filter.
+        const auto bailout = std::pow(FLT_MAX, 1.0f / (order+1.0f));
+
         // Need to reinitialize every time due to the different orders.
-        auto initialState = Helper::generateZeroState(left, top, xSide, ySide, MAX_X, MAX_Y);
+        auto initialState = Helper::generateZeroState(left, top, xSide, ySide, width, height);
 
         const cl::Buffer fractalStateBuffer(initialState.begin(), initialState.end(), false);
 
         // Start the Kernel call.
         const auto startKernelRun = std::chrono::system_clock::now();
         runKernel(
-            cl::EnqueueArgs(cl::NDRange(MAX_X, MAX_Y)),
+            cl::EnqueueArgs(cl::NDRange(width, height), cl::NDRange(lowestRunConfig.first, lowestRunConfig.second)),
             fractalStateBuffer,
             outputPixelBuffer,
             colorBuffer,
             numColors,
-            25,
+            MAX_ITERATIONS,
             order,
             bailout
             );
@@ -305,7 +407,7 @@ int main(int argc, char** argv)
         
         // Start putting the pixels onto the screen.
         const auto startPixelPut = std::chrono::system_clock::now();
-        SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(static_cast<void*>(pixelMap.data()), MAX_X, MAX_Y, 32, MAX_X * 4, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+        SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(static_cast<void*>(pixelMap.data()), width, height, 32, width * 4, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
         SDL_Texture* tex = SDL_CreateTextureFromSurface(ren, surf);
         SDL_FreeSurface(surf);
         if (tex == nullptr)

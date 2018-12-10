@@ -293,11 +293,11 @@ int main(int argc, char** argv)
             std::cout << "Starting timing for x = " << std::to_string(localX) + " y = " << std::to_string(localY) << std::endl;
             std::vector<double> runTimes;
             auto mapping = std::make_pair(localX, localY);
-            const auto order = 2.0f;
-            const auto bailout = std::pow(FLT_MAX, 1.0f / (order + 1.0f));
 
-            for(auto runNum = 0; runNum < 5; ++runNum)
+            for(auto order = 1.0f; order < 4.0f; order += 0.1f)
             {
+                const auto bailout = std::pow(FLT_MAX, 1.0f / (order + 1.0f));
+
                 // Need to reinitialize every time due to the different orders.
                 auto initialState = Helper::generateZeroState(left, top, xSide, ySide, width, height);
 

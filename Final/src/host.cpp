@@ -275,6 +275,9 @@ int main(int argc, char** argv)
 
     std::cout << "Starting local size optimization." << std::endl;
 
+    // Save the zero state so that we don't have to regenerate it all the time.
+    auto zeroState = Helper::generateZeroState(left, top, xSide, ySide, width, height);
+
     for (uint32_t localX = 1; localX <= maxWorkItemSize[0]; localX = localX << 1)
     {
         for (uint32_t localY = 1; localY <= maxWorkItemSize[1]; localY = localY << 1)
@@ -294,14 +297,13 @@ int main(int argc, char** argv)
             std::vector<double> runTimes;
             auto mapping = std::make_pair(localX, localY);
 
+
+
             for(auto order = 1.0f; order < 4.0f; order += 0.1f)
             {
                 const auto bailout = std::pow(FLT_MAX, 1.0f / (order + 1.0f));
 
-                // Need to reinitialize every time due to the different orders.
-                auto initialState = Helper::generateZeroState(left, top, xSide, ySide, width, height);
-
-                const cl::Buffer fractalStateBuffer(initialState.begin(), initialState.end(), false);
+                const cl::Buffer fractalStateBuffer(zeroState.begin(), zeroState.end(), false);
 
                 // Start the Kernel call.
                 const auto startKernelRun = std::chrono::system_clock::now();
@@ -383,10 +385,7 @@ int main(int argc, char** argv)
         // This prevents oddities where you get black bars showing up in the smoothed filter.
         const auto bailout = std::pow(FLT_MAX, 1.0f / (order+1.0f));
 
-        // Need to reinitialize every time due to the different orders.
-        auto initialState = Helper::generateZeroState(left, top, xSide, ySide, width, height);
-
-        const cl::Buffer fractalStateBuffer(initialState.begin(), initialState.end(), false);
+        const cl::Buffer fractalStateBuffer(zeroState.begin(), zeroState.end(), false);
 
         // Start the Kernel call.
         const auto startKernelRun = std::chrono::system_clock::now();

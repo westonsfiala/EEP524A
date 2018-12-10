@@ -61,6 +61,7 @@ kernel void Mandelbrot (
     else
     { 
         // Get the value to adjust the count by.
+        // This determines how to smoothe between the two adjacent colors.
         const float logZn = (float)log10(cabsf(saveState.complex));
         const float adjust = (float)log10(logZn / log10(bailout)) / log10(order);
         saveState.adjustedCount = 1.0f - adjust;

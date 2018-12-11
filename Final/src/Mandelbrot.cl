@@ -47,7 +47,7 @@ kernel void Mandelbrot (
     }
     
     // Get the index into the output pixels.
-    const int pixelIndex = 4*index;
+    const int pixelIndex = 3*index;
 
     // See if we reached the max count, if so output black pixels.
     if(saveState.count == maxCount)
@@ -55,7 +55,6 @@ kernel void Mandelbrot (
         outputPixels[pixelIndex] = 0;
         outputPixels[pixelIndex+1] = 0;
         outputPixels[pixelIndex+2] = 0;
-        outputPixels[pixelIndex+3] = 0xFF;
     }
     // We did not reach maxCount, time to calculate our colors.
     else
@@ -96,7 +95,6 @@ kernel void Mandelbrot (
         outputPixels[pixelIndex] = red;
         outputPixels[pixelIndex + 1] = green;
         outputPixels[pixelIndex + 2] = blue;
-        outputPixels[pixelIndex + 3] = 0xFF;
     }
 
     // Save the current state so that our future kernels can use it.

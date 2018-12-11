@@ -413,7 +413,6 @@ void getColors(const uint32_t count, const float adjust, std::vector<uint8_t> &p
     pixel[0] = red;
     pixel[1] = green;
     pixel[2] = blue;
-    pixel[3] = 0xFF;
 }
 
 std::vector<uint8_t> getAssignedColors()

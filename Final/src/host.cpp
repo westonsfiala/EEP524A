@@ -35,6 +35,7 @@ static const auto MAX_ITERATIONS = 25;
 
 static const auto ZOOM = 1.0f;
 static const auto CENTER = std::make_pair(0.0f, 0.0f);
+static const auto MIN_ORDER = 1.0f;
 static const auto ORDER = 15.0f;
 
 static const float DEFAULT_FIT = 2.5f;
@@ -47,6 +48,8 @@ int main(int argc, char** argv)
 
     cl::Platform chosenPlatform;
 
+    auto is2 = false;
+
     // Go until we find a valid platform.
     for (auto &plat : platforms) {
         const auto profile = plat.getInfo<CL_PLATFORM_PROFILE>();
@@ -56,8 +59,10 @@ int main(int argc, char** argv)
         const auto extensions = plat.getInfo<CL_PLATFORM_EXTENSIONS>();
 
         // Print out the information about the one we choose.
-        if (version.find("OpenCL 1.") != std::string::npos) {
-
+        if (version.find("OpenCL 2.") != std::string::npos && 
+            name.find("CPU Only") == std::string::npos && 
+            name.find("Intel") != std::string::npos) 
+        {
             std::cout << "Platform Info:" << std::endl;
             std::cout << "name: " << name << std::endl;
             std::cout << "version: " << version << std::endl;
@@ -66,13 +71,43 @@ int main(int argc, char** argv)
             std::cout << "extensions: " << extensions << std::endl << std::endl;
 
             chosenPlatform = plat;
+            is2 = true;
             break;
+        }
+    }
+
+    // If we didn't find a 2.x one try for a 1.2
+    if (chosenPlatform() == nullptr)
+    {
+        // Go until we find a valid platform.
+        for (auto &plat : platforms) {
+            const auto profile = plat.getInfo<CL_PLATFORM_PROFILE>();
+            const auto version = plat.getInfo<CL_PLATFORM_VERSION>();
+            const auto name = plat.getInfo<CL_PLATFORM_NAME>();
+            const auto vendor = plat.getInfo<CL_PLATFORM_VENDOR>();
+            const auto extensions = plat.getInfo<CL_PLATFORM_EXTENSIONS>();
+
+            // Print out the information about the one we choose.
+            if (version.find("OpenCL 1.") != std::string::npos && 
+                name.find("Intel") != std::string::npos) 
+            {
+                std::cout << "Platform Info:" << std::endl;
+                std::cout << "name: " << name << std::endl;
+                std::cout << "version: " << version << std::endl;
+                std::cout << "profile: " << profile << std::endl;
+                std::cout << "vendor: " << vendor << std::endl;
+                std::cout << "extensions: " << extensions << std::endl << std::endl;
+
+                chosenPlatform = plat;
+                is2 = false;
+                break;
+            }
         }
     }
 
     // If no platform was found, give up.
     if (chosenPlatform() == nullptr)  {
-        std::cout << "No OpenCL 2.0 platform found.";
+        std::cout << "No OpenCL 1.x or 2.x platform found.";
         return -1;
     }
 
@@ -126,7 +161,6 @@ int main(int argc, char** argv)
             std::cout << "nativeVectorWidthFloat: " << nativeVectorWidthFloat << std::endl;
             const auto nativeVectorWidthDouble = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>();
             std::cout << "nativeVectorWidthDouble: " << nativeVectorWidthDouble << std::endl;
-            /*
             const auto svmCapabilities = device.getInfo<CL_DEVICE_SVM_CAPABILITIES>();
             std::cout << "svmCapabilities: " << std::endl;
             if (svmCapabilities & CL_DEVICE_SVM_COARSE_GRAIN_BUFFER)
@@ -145,7 +179,6 @@ int main(int argc, char** argv)
             {
                 std::cout << "\tAtomics" << std::endl;
             }
-            */
             std::cout << std::endl;
         }
     }
@@ -155,14 +188,23 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    /*
     const auto outputKernelString = Helper::slurp(OUTPUT_GLOBAL_KERNEL_FILE);
     const std::vector<std::string> outputProgramStrings{ outputKernelString };
 
     cl::Program outputGlobalProgram(outputProgramStrings);
     try {
-        // ReSharper disable once CppExpressionWithoutSideEffects
-        outputGlobalProgram.build("-cl-std=CL2.0");
+        std::string buildString;
+        if (is2)
+        {
+            buildString = "-cl-std=CL2.0";
+        }
+        else
+        {
+            buildString = "-cl-std=CL1.2";
+        }
+        // ReSharper disable CppExpressionWithoutSideEffects
+        outputGlobalProgram.build(buildString.c_str());
+        // ReSharper restore CppExpressionWithoutSideEffects
     }
     catch (...) {
         // Print build info for all devices
@@ -197,16 +239,25 @@ int main(int argc, char** argv)
 
     cl::copy(outputBuffer2, outputVector.begin(), outputVector.end());
 
-    */
-
     // Get the kernel string for the mandelbrot kernel.
     const auto kernelString = Helper::slurp(MANDELBROT_KERNEL_FILE);
     const std::vector<std::string> programStrings {kernelString};
 
     cl::Program mandelbrotProgram(programStrings);
     try {
+
+        std::string buildString;
+        if(is2)
+        {
+            buildString = "-cl-std=CL2.0";
+        }
+        else
+        {
+            buildString = "-cl-std=CL1.2";
+        }
         // ReSharper disable once CppExpressionWithoutSideEffects
-        mandelbrotProgram.build("-cl-std=CL1.2");
+        mandelbrotProgram.build(buildString.c_str());
+        // ReSharper restore CppExpressionWithoutSideEffects
     }
     catch (...) {
         // Print build info for all devices
@@ -269,7 +320,7 @@ int main(int argc, char** argv)
 
     std::vector<uint8_t> pixel(4, 0);
 
-    std::vector<uint8_t> pixelMap(height * width * 4, 0);
+    std::vector<uint8_t> pixelMap(height * width * 3, 0);
 
     std::map<std::pair<uint32_t, uint32_t>, double> timingMap;
 
@@ -293,15 +344,14 @@ int main(int argc, char** argv)
             {
                 continue;
             }
+
             std::cout << "Starting timing for x = " << std::to_string(localX) + " y = " << std::to_string(localY) << std::endl;
             std::vector<double> runTimes;
             auto mapping = std::make_pair(localX, localY);
 
-
-
-            for(auto order = 1.0f; order < 4.0f; order += 0.1f)
+            for(auto order = MIN_ORDER; order < ORDER/10.0f + MIN_ORDER; order += 0.1f)
             {
-                const auto bailout = std::pow(FLT_MAX, 1.0f / (order + 1.0f));
+                const auto bailout = std::pow(FLT_MAX, 1.0f / (order + 2.0f));
 
                 const cl::Buffer fractalStateBuffer(zeroState.begin(), zeroState.end(), false);
 
@@ -373,21 +423,40 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    SDL_Texture* tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, width, height);
+    if(tex == nullptr)
+    {
+        std::cout << "SDL_CreateTexture Error: " << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return 1;
+    }
+
     const auto startTime = std::chrono::system_clock::now();
 
+    std::chrono::duration<double> bailoutCalcTime(0);
+    std::chrono::duration<double> copyToKernelTime(0);
     std::chrono::duration<double> kernelRunTime(0);
+    std::chrono::duration<double> copyFromKernelTime(0);
+    std::chrono::duration<double> textureGenTime(0);
     std::chrono::duration<double> pixelPutTime(0);
 
-    for (auto order = 1.0f; order < ORDER; order += 0.01f)
+    for (auto order = MIN_ORDER; order < ORDER; order += 0.01f)
     {
         // Get the bailout value based off of the want to never get a value to reach infinity.
         // At low orders, the bailout will be high, at high orders the bailout will be low.
         // This prevents oddities where you get black bars showing up in the smoothed filter.
-        const auto bailout = std::pow(FLT_MAX, 1.0f / (order+1.0f));
-
-        const cl::Buffer fractalStateBuffer(zeroState.begin(), zeroState.end(), false);
+        const auto startBailoutCalc = std::chrono::system_clock::now();
+        const auto bailout = std::pow(FLT_MAX, 1.0f / (order + 2.0f));
+        const auto endBailoutCalc = std::chrono::system_clock::now();
+        bailoutCalcTime += endBailoutCalc - startBailoutCalc;
 
         // Start the Kernel call.
+
+        const auto startCopyToKernelTime = std::chrono::system_clock::now();
+        const cl::Buffer fractalStateBuffer(zeroState.begin(), zeroState.end(), false);
+        const auto endCopyToKernelTime = std::chrono::system_clock::now();
+        copyToKernelTime += endCopyToKernelTime - startCopyToKernelTime;
+
         const auto startKernelRun = std::chrono::system_clock::now();
         runKernel(
             cl::EnqueueArgs(cl::NDRange(width, height), cl::NDRange(lowestRunConfig.first, lowestRunConfig.second)),
@@ -399,25 +468,36 @@ int main(int argc, char** argv)
             order,
             bailout
             );
-
-        cl::copy(outputPixelBuffer, pixelMap.begin(), pixelMap.end());
         const auto endKernelRun = std::chrono::system_clock::now();
         kernelRunTime += endKernelRun - startKernelRun;
-        
-        // Start putting the pixels onto the screen.
-        const auto startPixelPut = std::chrono::system_clock::now();
-        SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(static_cast<void*>(pixelMap.data()), width, height, 32, width * 4, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
-        SDL_Texture* tex = SDL_CreateTextureFromSurface(ren, surf);
-        SDL_FreeSurface(surf);
-        if (tex == nullptr)
+
+        const auto startCopyFromKernelTime = std::chrono::system_clock::now();
+        cl::copy(outputPixelBuffer, pixelMap.begin(), pixelMap.end());
+        const auto endCopyFromKernelTime = std::chrono::system_clock::now();
+        copyFromKernelTime += endCopyFromKernelTime - startCopyFromKernelTime;
+
+        const auto startTextureGenTime = std::chrono::system_clock::now();
+        // Lock the texture so we can write to it.
+        void* pixels = nullptr;
+        auto pitch = 0;
+        if(SDL_LockTexture(tex, nullptr, &pixels, &pitch) != 0)
         {
+            SDL_DestroyTexture(tex);
             SDL_DestroyRenderer(ren);
             SDL_DestroyWindow(win);
-            std::cout << "SDL_CreateTextureFromSurface Error: " << SDL_GetError() << std::endl;
+            std::cout << "SDL_LockTexture Error: " << SDL_GetError() << std::endl;
             SDL_Quit();
             return 1;
         }
 
+        memcpy(pixels, pixelMap.data(), pitch * height);
+
+        // Unlock the texture so that it updates.
+        SDL_UnlockTexture(tex);
+        const auto endTextureGenTime = std::chrono::system_clock::now();
+        textureGenTime += endTextureGenTime - startTextureGenTime;
+
+        const auto startPixelPut = std::chrono::system_clock::now();
         //First clear the renderer
         SDL_RenderClear(ren);
         //Draw the texture
@@ -425,10 +505,8 @@ int main(int argc, char** argv)
         //Update the screen
         SDL_RenderPresent(ren);
         // Get rid of the texture
-        SDL_DestroyTexture(tex);
-
+        //SDL_DestroyTexture(tex);
         const auto endPixelPut = std::chrono::system_clock::now();
-
         pixelPutTime += endPixelPut - startPixelPut;
     }
 
@@ -437,9 +515,22 @@ int main(int argc, char** argv)
     std::chrono::duration<double> diff = endTime - startTime;
 
     std::cout << "Run Time Mandelbrot for " << std::to_string(MAX_ITERATIONS) << " = " << diff.count() << " seconds" << std::endl;
+    auto otherTime = diff.count();
+    std::cout << "Bailout Calculation Time = " << bailoutCalcTime.count() << " seconds" << std::endl;
+    otherTime -= bailoutCalcTime.count();
+    std::cout << "Copy To Kernel Time = " << copyToKernelTime.count() << " seconds" << std::endl;
+    otherTime -= copyToKernelTime.count();
     std::cout << "Kernel Run Time = " << kernelRunTime.count() << " seconds" << std::endl;
+    otherTime -= kernelRunTime.count();
+    std::cout << "Copy From Kernel Time = " << copyFromKernelTime.count() << " seconds" << std::endl;
+    otherTime -= copyFromKernelTime.count();
+    std::cout << "Texture Gen Time = " << textureGenTime.count() << " seconds" << std::endl;
+    otherTime -= textureGenTime.count();
     std::cout << "Pixel Put Time = " << pixelPutTime.count() << " seconds" << std::endl;
+    otherTime -= pixelPutTime.count();
+    std::cout << "Other Time = " << otherTime << " seconds" << std::endl;
 
+    SDL_DestroyTexture(tex);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
     SDL_Quit();

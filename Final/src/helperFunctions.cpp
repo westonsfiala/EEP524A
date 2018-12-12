@@ -405,4 +405,82 @@ std::vector<cl_char> setGlobalColorsFade(std::vector<std::vector<uint8_t>> color
     return colors;
 }
 
+cl::Platform chooseClPlatform(bool &is2)
+{
+    // Go through all the platforms and find a good one.
+    std::vector<cl::Platform> platforms;
+    cl::Platform::get(&platforms);
+
+    cl::Platform chosenPlatform;
+
+    is2 = false;
+
+    // Go until we find a valid platform.
+    for (auto &plat : platforms) {
+        const auto profile = plat.getInfo<CL_PLATFORM_PROFILE>();
+        const auto version = plat.getInfo<CL_PLATFORM_VERSION>();
+        const auto name = plat.getInfo<CL_PLATFORM_NAME>();
+        const auto vendor = plat.getInfo<CL_PLATFORM_VENDOR>();
+        const auto extensions = plat.getInfo<CL_PLATFORM_EXTENSIONS>();
+
+        // Print out the information about the one we choose.
+        if (version.find("OpenCL 2.") != std::string::npos &&
+            name.find("CPU Only") == std::string::npos &&
+            name.find("Intel") != std::string::npos)
+        {
+            std::cout << "Platform Info:" << std::endl;
+            std::cout << "name: " << name << std::endl;
+            std::cout << "version: " << version << std::endl;
+            std::cout << "profile: " << profile << std::endl;
+            std::cout << "vendor: " << vendor << std::endl;
+            std::cout << "extensions: " << extensions << std::endl << std::endl;
+
+            chosenPlatform = plat;
+            is2 = true;
+            break;
+        }
+    }
+
+    // If we didn't find a 2.x one try for a 1.2
+    if (chosenPlatform() == nullptr)
+    {
+        // Go until we find a valid platform.
+        for (auto &plat : platforms) {
+            const auto profile = plat.getInfo<CL_PLATFORM_PROFILE>();
+            const auto version = plat.getInfo<CL_PLATFORM_VERSION>();
+            const auto name = plat.getInfo<CL_PLATFORM_NAME>();
+            const auto vendor = plat.getInfo<CL_PLATFORM_VENDOR>();
+            const auto extensions = plat.getInfo<CL_PLATFORM_EXTENSIONS>();
+
+            // Print out the information about the one we choose.
+            if (version.find("OpenCL 1.") != std::string::npos &&
+                name.find("Intel") != std::string::npos)
+            {
+                std::cout << "Platform Info:" << std::endl;
+                std::cout << "name: " << name << std::endl;
+                std::cout << "version: " << version << std::endl;
+                std::cout << "profile: " << profile << std::endl;
+                std::cout << "vendor: " << vendor << std::endl;
+                std::cout << "extensions: " << extensions << std::endl << std::endl;
+
+                chosenPlatform = plat;
+                is2 = false;
+                break;
+            }
+        }
+    }
+
+    // If no platform was found, give up.
+    if (chosenPlatform() == nullptr) {
+        std::cout << "No OpenCL 1.x or 2.x platform found.";
+        return chosenPlatform;
+    }
+
+    // Set the platform we found as the default.
+    const auto newDefaultPlatform = cl::Platform::setDefault(chosenPlatform);
+    if (newDefaultPlatform != chosenPlatform) {
+        std::cout << "Error setting default platform.";
+        return chosenPlatform;
+    }
+}
 }

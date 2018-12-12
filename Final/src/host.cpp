@@ -1,14 +1,7 @@
 // Include the c++ wrapper of openCL and enable exceptions
-#include <iostream>
-
-
-#define CL_HPP_ENABLE_EXCEPTIONS
-#define CL_HPP_MINIMUM_OPENCL_VERSION 200
-#define CL_HPP_TARGET_OPENCL_VERSION 200
-#include <CL/cl2.hpp>
-
 #include "helperFunctions.h"
 
+#include <iostream>
 #include <vector>
 #include <ostream>
 #include <iostream>
@@ -18,6 +11,7 @@
 #include <numeric>
 #include <assert.h>
 #include <float.h>
+#include "kernelGenerator.h"
 
 /*************************************************************************
 * CHANGE THE FOLLOWING LINES TO WHERE EVER YOU HAVE EVERYTHING MAPPED TO.
@@ -42,122 +36,55 @@ static const auto ORDER = 15.0f;
 
 static const float DEFAULT_FIT = 2.5f;
 
-struct  MandelbrotSaveState
+struct MandelbrotSaveState
 {
     cl_float2 complex;
     cl_float2 constantComplex;
     cl_uint count;
     cl_float adjustedCount;
     cl_float2 padding; // Needed to pack into the necessary svm alignment.
-} ;
+};
 
-    std::vector<MandelbrotSaveState> generateZeroState(const float left, const float top, const float xSide, const float ySide, const uint32_t xMax, const uint32_t yMax)
+std::vector<MandelbrotSaveState> generateZeroState(const float left, const float top, const float xSide, const float ySide, const uint32_t xMax, const uint32_t yMax)
+{
+    std::vector<MandelbrotSaveState> saveStates;
+    // setting up the xscale and yscale 
+    const auto xScale = xSide / xMax;
+    const auto yScale = ySide / yMax;
+
+    // scanning every point in that rectangular area. 
+    // Each point represents a Complex number (x + yi). 
+    // Iterate that complex number 
+    for (uint32_t y = 0; y < yMax; y++)
     {
-        std::vector<MandelbrotSaveState> saveStates;
-        // setting up the xscale and yscale 
-        const auto xScale = xSide / xMax;
-        const auto yScale = ySide / yMax;
-
-        // scanning every point in that rectangular area. 
-        // Each point represents a Complex number (x + yi). 
-        // Iterate that complex number 
-        for (uint32_t y = 0; y < yMax; y++)
+        for (uint32_t x = 0; x < xMax; x++)
         {
-            for (uint32_t x = 0; x < xMax; x++)
-            {
-                MandelbrotSaveState saveState;
-                saveState.constantComplex = { x * xScale + left, y * yScale + top };
-                saveState.complex = saveState.constantComplex;
-                saveState.count = 1;
-                saveState.adjustedCount = 0.0f;
+            MandelbrotSaveState saveState;
+            saveState.constantComplex = {x * xScale + left, y * yScale + top};
+            saveState.complex = saveState.constantComplex;
+            saveState.count = 1;
+            saveState.adjustedCount = 0.0f;
 
-                saveStates.push_back(saveState);
-            }
+            saveStates.push_back(saveState);
         }
-
-        return saveStates;
     }
+
+    return saveStates;
+}
 
 int main(int argc, char** argv)
 {
-    // Go through all the platforms and find a good one.
-    std::vector<cl::Platform> platforms;
-    cl::Platform::get(&platforms);
-
-    cl::Platform chosenPlatform;
-
+    // 
     auto is2 = false;
+    auto chosenPlatform = Helper::chooseClPlatform(is2);
 
-    // Go until we find a valid platform.
-    for (auto &plat : platforms) {
-        const auto profile = plat.getInfo<CL_PLATFORM_PROFILE>();
-        const auto version = plat.getInfo<CL_PLATFORM_VERSION>();
-        const auto name = plat.getInfo<CL_PLATFORM_NAME>();
-        const auto vendor = plat.getInfo<CL_PLATFORM_VENDOR>();
-        const auto extensions = plat.getInfo<CL_PLATFORM_EXTENSIONS>();
-
-        // Print out the information about the one we choose.
-        if (version.find("OpenCL 2.") != std::string::npos && 
-            name.find("CPU Only") == std::string::npos && 
-            name.find("Intel") != std::string::npos) 
-        {
-            std::cout << "Platform Info:" << std::endl;
-            std::cout << "name: " << name << std::endl;
-            std::cout << "version: " << version << std::endl;
-            std::cout << "profile: " << profile << std::endl;
-            std::cout << "vendor: " << vendor << std::endl;
-            std::cout << "extensions: " << extensions << std::endl << std::endl;
-
-            chosenPlatform = plat;
-            is2 = true;
-            break;
-        }
-    }
-
-    // If we didn't find a 2.x one try for a 1.2
     if (chosenPlatform() == nullptr)
     {
-        // Go until we find a valid platform.
-        for (auto &plat : platforms) {
-            const auto profile = plat.getInfo<CL_PLATFORM_PROFILE>();
-            const auto version = plat.getInfo<CL_PLATFORM_VERSION>();
-            const auto name = plat.getInfo<CL_PLATFORM_NAME>();
-            const auto vendor = plat.getInfo<CL_PLATFORM_VENDOR>();
-            const auto extensions = plat.getInfo<CL_PLATFORM_EXTENSIONS>();
-
-            // Print out the information about the one we choose.
-            if (version.find("OpenCL 1.") != std::string::npos && 
-                name.find("Intel") != std::string::npos) 
-            {
-                std::cout << "Platform Info:" << std::endl;
-                std::cout << "name: " << name << std::endl;
-                std::cout << "version: " << version << std::endl;
-                std::cout << "profile: " << profile << std::endl;
-                std::cout << "vendor: " << vendor << std::endl;
-                std::cout << "extensions: " << extensions << std::endl << std::endl;
-
-                chosenPlatform = plat;
-                is2 = false;
-                break;
-            }
-        }
-    }
-
-    // If no platform was found, give up.
-    if (chosenPlatform() == nullptr)  {
-        std::cout << "No OpenCL 1.x or 2.x platform found.";
-        return -1;
-    }
-
-    // Set the platform we found as the default.
-    const auto newDefaultPlatform = cl::Platform::setDefault(chosenPlatform);
-    if (newDefaultPlatform != chosenPlatform) {
-        std::cout << "Error setting default platform.";
         return -1;
     }
 
     uint32_t maxWorkGroupSize = 0;
-    std::vector<uint32_t> maxWorkItemSize(3,0);
+    std::vector<uint32_t> maxWorkItemSize(3, 0);
 
     // Go through the devices in the platform and print out their info.
     try
@@ -167,7 +94,7 @@ int main(int argc, char** argv)
         // ReSharper disable once CppExpressionWithoutSideEffects
         chosenPlatform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
 
-        for(auto device : devices)
+        for (auto device : devices)
         {
             std::cout << "Device Info:" << std::endl;
             const auto name = device.getInfo<CL_DEVICE_NAME>();
@@ -183,8 +110,8 @@ int main(int argc, char** argv)
             maxWorkGroupSize = static_cast<uint32_t>(device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>());
             std::cout << "maxWorkGroupSize: " << maxWorkGroupSize << std::endl;
             auto workItemSize = device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
-            std::cout << "maxWorkItemSize:" << std::endl; 
-            std::cout << "\tx: " << workItemSize[0] <<std::endl;
+            std::cout << "maxWorkItemSize:" << std::endl;
+            std::cout << "\tx: " << workItemSize[0] << std::endl;
             std::cout << "\ty: " << workItemSize[1] << std::endl;
             std::cout << "\tz: " << workItemSize[2] << std::endl;
             // Save these for the optimizations later.
@@ -199,6 +126,7 @@ int main(int argc, char** argv)
             std::cout << "nativeVectorWidthFloat: " << nativeVectorWidthFloat << std::endl;
             const auto nativeVectorWidthDouble = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>();
             std::cout << "nativeVectorWidthDouble: " << nativeVectorWidthDouble << std::endl;
+            /*
             const auto svmCapabilities = device.getInfo<CL_DEVICE_SVM_CAPABILITIES>();
             std::cout << "svmCapabilities: " << std::endl;
             if (svmCapabilities & CL_DEVICE_SVM_COARSE_GRAIN_BUFFER)
@@ -217,10 +145,11 @@ int main(int argc, char** argv)
             {
                 std::cout << "\tAtomics" << std::endl;
             }
+            */
             std::cout << std::endl;
         }
     }
-    catch(...)
+    catch (...)
     {
         std::cout << "Error getting devices" << std::endl;
         return -1;
@@ -273,15 +202,17 @@ int main(int argc, char** argv)
     );
     */
 
+    auto kernelGen = KernelGenerator();
+    const auto kernelString = kernelGen.getIncreaseOrderString();
     // Get the kernel string for the mandelbrot kernel.
-    const auto kernelString = Helper::slurp(MANDELBROT_KERNEL_FILE);
-    const std::vector<std::string> programStrings {kernelString};
+    //const auto kernelString = Helper::slurp(MANDELBROT_KERNEL_FILE);
+    const std::vector<std::string> programStrings{kernelString};
 
     cl::Program mandelbrotProgram(programStrings);
-    try {
-
+    try
+    {
         std::string buildString;
-        if(is2)
+        if (is2)
         {
             buildString = "-cl-std=CL2.0";
         }
@@ -293,11 +224,13 @@ int main(int argc, char** argv)
         mandelbrotProgram.build(buildString.c_str());
         // ReSharper restore CppExpressionWithoutSideEffects
     }
-    catch (...) {
+    catch (...)
+    {
         // Print build info for all devices
         auto buildErr = CL_SUCCESS;
         auto buildInfo = mandelbrotProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(&buildErr);
-        for (auto &pair : buildInfo) {
+        for (auto& pair : buildInfo)
+        {
             std::cerr << pair.second << std::endl << std::endl;
         }
         return -1;
@@ -338,7 +271,7 @@ int main(int argc, char** argv)
         uint32_t, // maxCount
         cl_float, // order
         cl_float // bailout
-        >(mandelbrotProgram, MANDELBROT_KERNEL_NAME);
+    >(mandelbrotProgram, MANDELBROT_KERNEL_NAME);
 
     std::vector<cl_char> outputPixels(height * width * 3, 0);
 
@@ -364,13 +297,13 @@ int main(int argc, char** argv)
         for (uint32_t localY = 1; localY <= maxWorkItemSize[1]; localY = localY << 1)
         {
             // don't run any configurations that exceed the max work group size.
-            if(localX * localY > maxWorkGroupSize)
+            if (localX * localY > maxWorkGroupSize)
             {
                 continue;
             }
 
             // If we do not divide local sizes into even sections don't run them.
-            if(!is2 && (width % localX != 0 || height % localY != 0))
+            if (!is2 && (width % localX != 0 || height % localY != 0))
             {
                 continue;
             }
@@ -379,7 +312,7 @@ int main(int argc, char** argv)
             std::vector<double> runTimes;
             auto mapping = std::make_pair(localX, localY);
 
-            for(auto order = MIN_ORDER; order < ORDER/10.0f + MIN_ORDER; order += 0.1f)
+            for (auto order = MIN_ORDER; order < ORDER / 10.0f + MIN_ORDER; order += 0.1f)
             {
                 const auto bailout = std::pow(std::pow(FLT_MAX, 1.0f / (order + 2.0f)), 1.0f / 2.0f);
 
@@ -423,11 +356,11 @@ int main(int argc, char** argv)
 
     auto lowestRunConfig = std::make_pair(1, 1);
     auto lowestRunTime = DBL_MAX;
-    for(const auto runMapping : timingMap)
+    for (const auto runMapping : timingMap)
     {
         const auto config = runMapping.first;
         const auto time = runMapping.second;
-        if(time < lowestRunTime)
+        if (time < lowestRunTime)
         {
             lowestRunTime = time;
             lowestRunConfig = config;
@@ -456,7 +389,7 @@ int main(int argc, char** argv)
     }
 
     SDL_Texture* tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, width, height);
-    if(tex == nullptr)
+    if (tex == nullptr)
     {
         std::cout << "SDL_CreateTexture Error: " << SDL_GetError() << std::endl;
         SDL_Quit();
@@ -478,7 +411,7 @@ int main(int argc, char** argv)
         // At low orders, the bailout will be high, at high orders the bailout will be low.
         // This prevents oddities where you get black bars showing up in the smoothed filter.
         const auto startBailoutCalc = std::chrono::system_clock::now();
-        const auto bailout = std::pow(std::pow(FLT_MAX, 1.0f / (order + 2.0f)), 1.0f/2.0f);
+        const auto bailout = std::pow(std::pow(FLT_MAX, 1.0f / (order + 2.0f)), 1.0f / 2.0f);
         const auto endBailoutCalc = std::chrono::system_clock::now();
         bailoutCalcTime += endBailoutCalc - startBailoutCalc;
 
@@ -499,7 +432,7 @@ int main(int argc, char** argv)
             MAX_ITERATIONS,
             order,
             bailout
-            );
+        );
 
         // Wait for the kernel to finish.
         cl::finish();
@@ -516,7 +449,7 @@ int main(int argc, char** argv)
         // Lock the texture so we can write to it.
         void* pixels = nullptr;
         auto pitch = 0;
-        if(SDL_LockTexture(tex, nullptr, &pixels, &pitch) != 0)
+        if (SDL_LockTexture(tex, nullptr, &pixels, &pitch) != 0)
         {
             SDL_DestroyTexture(tex);
             SDL_DestroyRenderer(ren);

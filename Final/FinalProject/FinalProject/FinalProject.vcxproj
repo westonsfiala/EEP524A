@@ -31,10 +31,12 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\helperFunctions.cpp" />
     <ClCompile Include="..\..\src\host.cpp" />
+    <ClCompile Include="..\..\src\kernelGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\clcomplex.h" />
     <ClInclude Include="..\..\src\helperFunctions.h" />
+    <ClInclude Include="..\..\src\kernelGenerator.h" />
   </ItemGroup>
   <ItemGroup>
     <Intel_OpenCL_Build_Rules Include="..\..\src\Mandelbrot.cl" />

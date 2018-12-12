@@ -2,7 +2,11 @@
 #include <string>
 #include <vector>
 #include <Windows.h>
-#include <CL/cl.h>
+
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+#include <CL/cl2.hpp>
 
 namespace Helper
 {
@@ -20,4 +24,6 @@ namespace Helper
     std::vector<uint8_t> getColorHelper(uint32_t count, uint32_t maxCount, std::pair<uint8_t, uint8_t> &redPair, std::pair<uint8_t, uint8_t> &greenPair, std::pair<uint8_t, uint8_t> &bluePair);
 
     std::vector<cl_char> setGlobalColorsFade(std::vector<std::vector<uint8_t>> colorList);
+
+    cl::Platform chooseClPlatform(bool& is2);
 }

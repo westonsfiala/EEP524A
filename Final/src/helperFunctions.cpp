@@ -415,34 +415,7 @@ cl::Platform chooseClPlatform(bool &is2)
 
     is2 = false;
 
-    // Go until we find a valid platform.
-    for (auto &plat : platforms) {
-        const auto profile = plat.getInfo<CL_PLATFORM_PROFILE>();
-        const auto version = plat.getInfo<CL_PLATFORM_VERSION>();
-        const auto name = plat.getInfo<CL_PLATFORM_NAME>();
-        const auto vendor = plat.getInfo<CL_PLATFORM_VENDOR>();
-        const auto extensions = plat.getInfo<CL_PLATFORM_EXTENSIONS>();
-
-        // Print out the information about the one we choose.
-        if (version.find("OpenCL 2.") != std::string::npos &&
-            name.find("CPU Only") == std::string::npos &&
-            name.find("Intel") != std::string::npos)
-        {
-            std::cout << "Platform Info:" << std::endl;
-            std::cout << "name: " << name << std::endl;
-            std::cout << "version: " << version << std::endl;
-            std::cout << "profile: " << profile << std::endl;
-            std::cout << "vendor: " << vendor << std::endl;
-            std::cout << "extensions: " << extensions << std::endl << std::endl;
-
-            chosenPlatform = plat;
-            is2 = true;
-            break;
-        }
-    }
-
-    // If we didn't find a 2.x one try for a 1.2
-    if (chosenPlatform() == nullptr)
+    try
     {
         // Go until we find a valid platform.
         for (auto &plat : platforms) {
@@ -453,7 +426,8 @@ cl::Platform chooseClPlatform(bool &is2)
             const auto extensions = plat.getInfo<CL_PLATFORM_EXTENSIONS>();
 
             // Print out the information about the one we choose.
-            if (version.find("OpenCL 1.") != std::string::npos &&
+            if (version.find("OpenCL 2.") != std::string::npos &&
+                name.find("CPU Only") == std::string::npos &&
                 name.find("Intel") != std::string::npos)
             {
                 std::cout << "Platform Info:" << std::endl;
@@ -464,10 +438,44 @@ cl::Platform chooseClPlatform(bool &is2)
                 std::cout << "extensions: " << extensions << std::endl << std::endl;
 
                 chosenPlatform = plat;
-                is2 = false;
+                is2 = true;
                 break;
             }
         }
+
+        // If we didn't find a 2.x one try for a 1.2
+        if (chosenPlatform() == nullptr)
+        {
+            // Go until we find a valid platform.
+            for (auto &plat : platforms) {
+                const auto profile = plat.getInfo<CL_PLATFORM_PROFILE>();
+                const auto version = plat.getInfo<CL_PLATFORM_VERSION>();
+                const auto name = plat.getInfo<CL_PLATFORM_NAME>();
+                const auto vendor = plat.getInfo<CL_PLATFORM_VENDOR>();
+                const auto extensions = plat.getInfo<CL_PLATFORM_EXTENSIONS>();
+
+                // Print out the information about the one we choose.
+                if (version.find("OpenCL 1.") != std::string::npos &&
+                    name.find("Intel") != std::string::npos)
+                {
+                    std::cout << "Platform Info:" << std::endl;
+                    std::cout << "name: " << name << std::endl;
+                    std::cout << "version: " << version << std::endl;
+                    std::cout << "profile: " << profile << std::endl;
+                    std::cout << "vendor: " << vendor << std::endl;
+                    std::cout << "extensions: " << extensions << std::endl << std::endl;
+
+                    chosenPlatform = plat;
+                    is2 = false;
+                    break;
+                }
+            }
+        }
+    }
+    catch (cl::Error e)
+    {
+        std::cout << "Issue with finding platform." << e.what() << std::endl;
+        return chosenPlatform;
     }
 
     // If no platform was found, give up.
@@ -481,6 +489,56 @@ cl::Platform chooseClPlatform(bool &is2)
     if (newDefaultPlatform != chosenPlatform) {
         std::cout << "Error setting default platform.";
         return chosenPlatform;
+    }
+}
+
+void chooseClDevice(uint32_t &maxWorkGroupSize, std::vector<uint32_t>& maxWorkItemSize)
+{
+    maxWorkGroupSize = 0;
+    maxWorkItemSize = std::vector<uint32_t>(3, 0);
+
+    // Go through the devices in the platform and print out their info.
+    try
+    {
+        std::vector<cl::Device> devices;
+
+        // ReSharper disable once CppExpressionWithoutSideEffects
+        auto device = cl::Device::getDefault();
+        std::cout << "Device Info:" << std::endl;
+        const auto name = device.getInfo<CL_DEVICE_NAME>();
+        std::cout << "name: " << name << std::endl;
+        const auto vendor = device.getInfo<CL_DEVICE_VENDOR>();
+        std::cout << "vendor: " << vendor << std::endl;
+        const auto version = device.getInfo<CL_DEVICE_VERSION>();
+        std::cout << "version: " << version << std::endl;
+        const auto maxComputeUnits = device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+        std::cout << "maxComputeUnits: " << maxComputeUnits << std::endl;
+        const auto maxWorkItemDimensions = device.getInfo<CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS>();
+        std::cout << "maxWorkItemDimensions: " << maxWorkItemDimensions << std::endl;
+        maxWorkGroupSize = static_cast<uint32_t>(device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>());
+        std::cout << "maxWorkGroupSize: " << maxWorkGroupSize << std::endl;
+        auto workItemSize = device.getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES>();
+        std::cout << "maxWorkItemSize:" << std::endl;
+        std::cout << "\tx: " << workItemSize[0] << std::endl;
+        std::cout << "\ty: " << workItemSize[1] << std::endl;
+        std::cout << "\tz: " << workItemSize[2] << std::endl;
+        // Save these for the optimizations later.
+        maxWorkItemSize[0] = static_cast<uint32_t>(workItemSize[0]);
+        maxWorkItemSize[1] = static_cast<uint32_t>(workItemSize[1]);
+        maxWorkItemSize[2] = static_cast<uint32_t>(workItemSize[2]);
+        const auto preferredVectorWidthFloat = device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT>();
+        std::cout << "preferredVectorWidthFloat: " << preferredVectorWidthFloat << std::endl;
+        const auto preferredVectorWidthDouble = device.getInfo<CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE>();
+        std::cout << "preferredVectorWidthDouble: " << preferredVectorWidthDouble << std::endl;
+        const auto nativeVectorWidthFloat = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT>();
+        std::cout << "nativeVectorWidthFloat: " << nativeVectorWidthFloat << std::endl;
+        const auto nativeVectorWidthDouble = device.getInfo<CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE>();
+        std::cout << "nativeVectorWidthDouble: " << nativeVectorWidthDouble << std::endl;
+        std::cout << std::endl;
+    }
+    catch (cl::Error e)
+    {
+        std::cout << "Error getting devices. " << e.what() << std::endl;
     }
 }
 }

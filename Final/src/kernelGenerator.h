@@ -1,15 +1,63 @@
 #pragma once
 #include <string>
+#include "helperFunctions.h"
 
 class KernelGenerator
 {
 public:
-    KernelGenerator();
+    enum MandelbrotType
+    {
+        Order
+    };
 
-    std::string getEnhanceKernelString();
-    std::string getZoomKernelString();
-    std::string getIncreaseOrderString();
+    explicit KernelGenerator(bool is2, uint32_t maxGroupSize, std::vector<uint32_t> maxItemSizes, MandelbrotType type);
+
+    void setWindowSize(uint32_t width, uint32_t height);
+    void setLocalSize(uint32_t x, uint32_t y);
+    void setMaxIterations(uint32_t maxIterations);
+
+    std::pair<uint32_t, uint32_t> findOptimalLocalSize(uint32_t numRuns);
+    void runMandelbrot(float order, float stepSize = 0.01f);
+
 
 private:
-    std::string getKernelBase();
+
+    static const std::string KERNEL_NAME;
+
+    struct MandelbrotSaveStateOrder
+    {
+        cl_float2 constantComplex;
+    };
+
+    typedef cl::KernelFunctor<
+        cl::Buffer, // FractalState
+        cl::Buffer, // OutputPixels
+        cl::Buffer, // Colors
+        uint32_t, // numColors
+        uint32_t, // maxCount
+        cl_float, // order
+        cl_float // bailout
+    > MandelbrotKernel;
+
+    // All the methods relating to the order mandelbrot.
+    std::string getIncreaseOrderString() const;
+    std::vector<MandelbrotSaveStateOrder> generateZeroStateOrder(float left, float top, float xSide, float ySide);
+    std::pair<uint32_t, uint32_t> findOptimalLocalSizeOrder(uint32_t numRuns);
+    MandelbrotKernel prepareRunStateOrder(cl::Buffer& fractalState, cl::Buffer& outputPixels, cl::Buffer& colors, uint32_t& numColors);
+    void runMandelbrotOrder(float order, float stepSize);
+
+
+    MandelbrotKernel getKernelFunctor(const std::string &kernelString) const;
+
+    double runKernel(MandelbrotKernel kernel, bool showVisuals,
+        float maxOrder, float stepSize, cl::Buffer fractalState, cl::Buffer outputPixels, cl::Buffer colors, uint32_t numColors) const;
+
+    bool mIs2;
+    uint32_t mMaxGroupSize;
+    std::vector<uint32_t> mMaxItemSizes;
+    MandelbrotType mMandelbrotType;
+
+    std::pair<uint32_t, uint32_t> mWindowSize;
+    std::pair<uint32_t, uint32_t> mLocalSize;
+    uint32_t mMaxIterations;
 };

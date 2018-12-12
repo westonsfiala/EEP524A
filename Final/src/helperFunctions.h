@@ -26,4 +26,5 @@ namespace Helper
     std::vector<cl_char> setGlobalColorsFade(std::vector<std::vector<uint8_t>> colorList);
 
     cl::Platform chooseClPlatform(bool& is2);
+    void chooseClDevice(uint32_t &maxWorkGroupSize, std::vector<uint32_t>& maxWorkItemSize);
 }

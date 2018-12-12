@@ -29,9 +29,11 @@ kernel void Mandelbrot (
 
     struct MandelbrotSaveState saveState = saveStates[index];
 
+    float tempAbs = cabsf(saveState.complex);
+
     //printf("Save State = %f %fi : %f %fi : %i : %f\n", saveState.complex.x, saveState.complex.y, saveState.constantComplex.x, saveState.constantComplex.y, saveState.count, saveState.adjustedCount);
 
-    while (cabsf(saveState.complex) < bailout && saveState.count < maxCount)
+    while (tempAbs < bailout && saveState.count < maxCount)
     {
         const float2 power = {order, 0.0f};
 
@@ -43,6 +45,8 @@ kernel void Mandelbrot (
 
         // Increment count 
         saveState.count++;
+
+        tempAbs = cabsf(saveState.complex);
 
         //printf("Save State = %f %fi : %f %fi : %i : %f\n", saveState.complex.x, saveState.complex.y, saveState.constantComplex.x, saveState.constantComplex.y, saveState.count, saveState.adjustedCount);
     }
@@ -62,7 +66,7 @@ kernel void Mandelbrot (
     { 
         // Get the value to adjust the count by.
         // This determines how to smoothe between the two adjacent colors.
-        const float logZn = (float)log10(cabsf(saveState.complex));
+        const float logZn = (float)log10(tempAbs);
         const float adjust = (float)log10(logZn / log10(bailout)) / log10(order);
         saveState.adjustedCount = 1.0f - adjust;
         //saveState.adjustedCount = 0;

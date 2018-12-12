@@ -331,8 +331,8 @@ int main(int argc, char** argv)
 
     // Setup the kernel so that when we have the arguments we can run it right away.
     auto runKernel = cl::KernelFunctor<
-        cl::coarse_svm_vector<MandelbrotSaveState>&, // FractalState
-        cl::coarse_svm_vector<cl_char>&, // OutputPixels
+        cl::Buffer, // FractalState
+        cl::Buffer, // OutputPixels
         cl::Buffer, // Colors
         uint32_t, // numColors
         uint32_t, // maxCount
@@ -340,9 +340,9 @@ int main(int argc, char** argv)
         cl_float // bailout
         >(mandelbrotProgram, MANDELBROT_KERNEL_NAME);
 
-    cl::coarse_svm_vector<cl_char> outputPixels(height * width * 3, 0);
+    std::vector<cl_char> outputPixels(height * width * 3, 0);
 
-    //const cl::Buffer outputPixelBuffer(outputPixels.begin(), outputPixels.end(), false);
+    const cl::Buffer outputPixelBuffer(outputPixels.begin(), outputPixels.end(), false);
 
     // Set the global colors so that it is a fast lookup.
     auto setColors = Helper::setGlobalColorsFade({});
@@ -351,14 +351,13 @@ int main(int argc, char** argv)
 
     const cl::Buffer colorBuffer(setColors.begin(), setColors.end(), true);
 
-    //std::vector<uint8_t, cl::SVMAllocator<uint8_t, cl::SVMTraitFine<>>> pixelMap(height * width * 3, 0);
-
     std::map<std::pair<uint32_t, uint32_t>, double> timingMap;
 
     std::cout << "Starting local size optimization." << std::endl;
 
     // Save the zero state so that we don't have to regenerate it all the time.
     auto zeroState = generateZeroState(left, top, xSide, ySide, width, height);
+    std::vector<MandelbrotSaveState> checkState(zeroState.begin(), zeroState.end());
 
     for (uint32_t localX = 1; localX <= maxWorkItemSize[0]; localX = localX << 1)
     {
@@ -371,7 +370,7 @@ int main(int argc, char** argv)
             }
 
             // If we do not divide local sizes into even sections don't run them.
-            if(width % localX != 0 || height % localY != 0)
+            if(!is2 && (width % localX != 0 || height % localY != 0))
             {
                 continue;
             }
@@ -382,11 +381,9 @@ int main(int argc, char** argv)
 
             for(auto order = MIN_ORDER; order < ORDER/10.0f + MIN_ORDER; order += 0.1f)
             {
-                const auto bailout = std::pow(FLT_MAX, 1.0f / (order + 2.0f));
+                const auto bailout = std::pow(std::pow(FLT_MAX, 1.0f / (order + 2.0f)), 1.0f / 2.0f);
 
-                auto runState = cl::coarse_svm_vector<MandelbrotSaveState>(zeroState.begin(), zeroState.end());
-
-                cl::unmapSVM(runState);
+                auto runBuffer = cl::Buffer(zeroState.begin(), zeroState.end(), false);
 
                 // Start the Kernel call.
                 const auto startKernelRun = std::chrono::system_clock::now();
@@ -394,14 +391,17 @@ int main(int argc, char** argv)
                 {
                     runKernel(
                         cl::EnqueueArgs(cl::NDRange(width, height), cl::NDRange(localX, localY)),
-                        runState,
-                        outputPixels,
+                        runBuffer,
+                        outputPixelBuffer,
                         colorBuffer,
                         numColors,
                         MAX_ITERATIONS,
                         order,
                         bailout
                     );
+
+                    // Wait for the kernel to finish.
+                    cl::finish();
                 }
                 catch (std::runtime_error e)
                 {
@@ -410,7 +410,6 @@ int main(int argc, char** argv)
                 }
 
                 const auto endKernelRun = std::chrono::system_clock::now();
-
                 auto runTime = endKernelRun - startKernelRun;
 
                 runTimes.push_back(static_cast<double>(runTime.count()));
@@ -479,33 +478,37 @@ int main(int argc, char** argv)
         // At low orders, the bailout will be high, at high orders the bailout will be low.
         // This prevents oddities where you get black bars showing up in the smoothed filter.
         const auto startBailoutCalc = std::chrono::system_clock::now();
-        const auto bailout = std::pow(FLT_MAX, 1.0f / (order + 2.0f));
+        const auto bailout = std::pow(std::pow(FLT_MAX, 1.0f / (order + 2.0f)), 1.0f/2.0f);
         const auto endBailoutCalc = std::chrono::system_clock::now();
         bailoutCalcTime += endBailoutCalc - startBailoutCalc;
 
         // Start the Kernel call.
 
         const auto startCopyToKernelTime = std::chrono::system_clock::now();
-        auto runState = cl::coarse_svm_vector<MandelbrotSaveState>(zeroState.begin(), zeroState.end());
+        auto runBuffer = cl::Buffer(zeroState.begin(), zeroState.end(), false);
         const auto endCopyToKernelTime = std::chrono::system_clock::now();
         copyToKernelTime += endCopyToKernelTime - startCopyToKernelTime;
 
         const auto startKernelRun = std::chrono::system_clock::now();
         runKernel(
             cl::EnqueueArgs(cl::NDRange(width, height), cl::NDRange(lowestRunConfig.first, lowestRunConfig.second)),
-            runState,
-            outputPixels,
+            runBuffer,
+            outputPixelBuffer,
             colorBuffer,
             numColors,
             MAX_ITERATIONS,
             order,
             bailout
             );
+
+        // Wait for the kernel to finish.
+        cl::finish();
+
         const auto endKernelRun = std::chrono::system_clock::now();
         kernelRunTime += endKernelRun - startKernelRun;
 
         const auto startCopyFromKernelTime = std::chrono::system_clock::now();
-        cl::mapSVM(outputPixels);
+        cl::copy(outputPixelBuffer, outputPixels.begin(), outputPixels.end());
         const auto endCopyFromKernelTime = std::chrono::system_clock::now();
         copyFromKernelTime += endCopyFromKernelTime - startCopyFromKernelTime;
 

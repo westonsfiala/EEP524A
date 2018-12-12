@@ -6,16 +6,6 @@
 
 namespace Helper
 {
-    struct MandelbrotSaveState
-    {
-        cl_float2 complex;
-        cl_float2 constantComplex;
-        uint32_t count;
-        float adjustedCount;
-    };
-
-    static std::vector<std::vector<uint8_t>> gColors;
-
     std::string slurp(const std::string& fileName);
     double variance(const std::vector<double>& samples);
     double standardDeviation(const std::vector<double>& samples);
@@ -26,15 +16,8 @@ namespace Helper
     std::string clGetErrorString(const int &errorCode);
     bool processClCallStatus(const std::string& callName, const int &errorCode); 
 
-    void setGlobalColorsPattern(uint32_t maxCount, std::pair<uint8_t, uint8_t> redPair, std::pair<uint8_t, uint8_t> greenPair, std::pair<uint8_t, uint8_t> bluePair);
+    std::vector<cl_char> setGlobalColorsPattern(uint32_t maxCount, std::pair<uint8_t, uint8_t> redPair, std::pair<uint8_t, uint8_t> greenPair, std::pair<uint8_t, uint8_t> bluePair);
     std::vector<uint8_t> getColorHelper(uint32_t count, uint32_t maxCount, std::pair<uint8_t, uint8_t> &redPair, std::pair<uint8_t, uint8_t> &greenPair, std::pair<uint8_t, uint8_t> &bluePair);
 
-    void setGlobalColorsFade(std::vector<std::vector<uint8_t>> colorList);
-
-    void getColors(uint32_t count, float adjust, std::vector<uint8_t>& pixels);
-
-    std::vector<uint8_t> getAssignedColors();
-    inline uint32_t getNumAssignedColors() { return static_cast<uint32_t>(gColors.size()); }
-
-    std::vector<Helper::MandelbrotSaveState> generateZeroState(float left, float top, float xSide, float ySide, uint32_t xMax, uint32_t yMax);
+    std::vector<cl_char> setGlobalColorsFade(std::vector<std::vector<uint8_t>> colorList);
 }

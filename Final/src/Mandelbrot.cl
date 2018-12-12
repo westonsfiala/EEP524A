@@ -7,6 +7,7 @@ struct MandelbrotSaveState
     float2 constantComplex;
     unsigned int count;
     float adjustedCount;
+    float2 padding;
 };
 
 

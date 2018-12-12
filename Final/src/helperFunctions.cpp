@@ -1,7 +1,5 @@
 #include "helperFunctions.h"
-#include "CL/cl.h"
 #include <assert.h>
-#include <Windows.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -76,7 +74,7 @@ std::pair<double, double> printResults(std::vector<std::pair<LARGE_INTEGER, LARG
 
     for (const auto& timeStamp : times)
     {
-        double elapsedTime = timeStamp.second.QuadPart - timeStamp.first.QuadPart;
+        double elapsedTime = static_cast<double>(timeStamp.second.QuadPart - timeStamp.first.QuadPart);
 
         // Convert from number of counts to number of milliseconds
         elapsedTime *= 1000;
@@ -104,7 +102,7 @@ std::pair<double, double> printResults(std::vector<std::pair<cl_ulong, cl_ulong>
 
     for (const auto& timeStamp : times)
     {
-        double elapsedTime = timeStamp.second - timeStamp.first;
+        double elapsedTime = static_cast<double>(timeStamp.second - timeStamp.first);
 
         elapsedTime /= 1000000.0;
 
@@ -277,10 +275,9 @@ bool processClCallStatus(const std::string& callName, const int& errorCode)
     return false;
 }
 
-void setGlobalColorsPattern(const uint32_t maxCount, std::pair<uint8_t, uint8_t> redPair, std::pair<uint8_t, uint8_t> greenPair, std::pair<uint8_t, uint8_t> bluePair)
+std::vector<cl_char> setGlobalColorsPattern(const uint32_t maxCount, std::pair<uint8_t, uint8_t> redPair, std::pair<uint8_t, uint8_t> greenPair, std::pair<uint8_t, uint8_t> bluePair)
 {
-    // Clear away any old colors.
-    gColors.clear();
+    std::vector<cl_char> colorVector;
 
     // If the period of any of the colors is below 1, bad things happen.
     redPair.first = std::max<uint8_t>(redPair.first, 1);
@@ -288,14 +285,20 @@ void setGlobalColorsPattern(const uint32_t maxCount, std::pair<uint8_t, uint8_t>
     bluePair.first = std::max<uint8_t>(bluePair.first, 1);
 
     // Go through all of the count combinations and set them.
-    for(auto i = 0; i < maxCount; ++i)
+    for(uint32_t i = 0; i < maxCount; ++i)
     {
         const auto colors = getColorHelper(i, maxCount, redPair, greenPair, bluePair);
-        gColors.push_back(colors);
+        for(auto pixel : colors)
+        {
+            colorVector.push_back(pixel);
+        }
     }
 
     // Push one extra black pixel color to the back.
-    gColors.push_back({ 0, 0, 0});
+    colorVector.push_back(0);
+    colorVector.push_back(0);
+    colorVector.push_back(0);
+    return colorVector;
 }
 
 std::vector<uint8_t> getColorHelper(const uint32_t count, const uint32_t maxCount, std::pair<uint8_t, uint8_t> &redPair, std::pair<uint8_t, uint8_t> &greenPair, std::pair<uint8_t, uint8_t> &bluePair)
@@ -373,9 +376,9 @@ std::vector<uint8_t> getColorHelper(const uint32_t count, const uint32_t maxCoun
     return { red, green, blue };
 }
 
-void setGlobalColorsFade(std::vector<std::vector<uint8_t>> colorList)
+std::vector<cl_char> setGlobalColorsFade(std::vector<std::vector<uint8_t>> colorList)
 {
-    gColors.clear();
+    std::vector<cl_char> colors;
 
     // If the color map is empty, fill it with some random stuff.
     if(colorList.empty())
@@ -391,70 +394,15 @@ void setGlobalColorsFade(std::vector<std::vector<uint8_t>> colorList)
         colorList.push_back({ 255, 255,255 });
     }
 
-    gColors = colorList;
-}
-
-void getColors(const uint32_t count, const float adjust, std::vector<uint8_t> &pixel)
-{
-    const auto index1 = (count + 1) % gColors.size();
-    const auto index2 = count % gColors.size();
-
-    // Get all the colors based off of what was given to us, and the one plus of what was given to us.
-    auto colors1 = gColors[index1];
-    auto colors2 = gColors[index2];
-
-    const auto weight1 = adjust;
-    const auto weight2 = 1 - weight1;
-
-    const auto red = static_cast<uint8_t>(colors1[0] * weight1 + colors2[0] * weight2);
-    const auto green = static_cast<uint8_t>(colors1[1] * weight1 + colors2[1] * weight2);
-    const auto blue = static_cast<uint8_t>(colors1[2] * weight1 + colors2[2] * weight2);
-
-    pixel[0] = red;
-    pixel[1] = green;
-    pixel[2] = blue;
-}
-
-std::vector<uint8_t> getAssignedColors()
-{
-    std::vector<uint8_t> colors;
-    for(auto pixel : gColors)
+    for(auto pixel : colorList)
     {
         for(auto color : pixel)
         {
             colors.push_back(color);
         }
     }
+
     return colors;
 }
 
-
-
-std::vector<MandelbrotSaveState> generateZeroState(const float left, const float top, const float xSide, const float ySide, const uint32_t xMax, const uint32_t yMax)
-{
-    std::vector<MandelbrotSaveState> saveStates;
-
-    // setting up the xscale and yscale 
-    const auto xScale = xSide / xMax;
-    const auto yScale = ySide / yMax;
-
-    // scanning every point in that rectangular area. 
-    // Each point represents a Complex number (x + yi). 
-    // Iterate that complex number 
-    for (auto y = 0; y < yMax; y++)
-    {
-        for (auto x = 0; x < xMax; x++)
-        {
-            MandelbrotSaveState saveState;
-            saveState.constantComplex = {x * xScale + left, y * yScale + top};
-            saveState.complex = saveState.constantComplex;
-            saveState.count = 1;
-            saveState.adjustedCount = 1;
-
-            saveStates.push_back(saveState);
-        }
-    }
-
-    return saveStates;
-}
 }

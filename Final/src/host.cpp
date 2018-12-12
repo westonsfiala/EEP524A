@@ -1,9 +1,11 @@
 // Include the c++ wrapper of openCL and enable exceptions
-#define CL_HPP_ENABLE_EXCEPTIONS
-#define CL_HPP_MINIMUM_OPENCL_VERSION 120
-#define CL_HPP_TARGET_OPENCL_VERSION 120
-#include <CL/cl2.hpp>
 #include <iostream>
+
+
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_MINIMUM_OPENCL_VERSION 200
+#define CL_HPP_TARGET_OPENCL_VERSION 200
+#include <CL/cl2.hpp>
 
 #include "helperFunctions.h"
 
@@ -31,7 +33,7 @@ static const std::string MANDELBROT_KERNEL_FILE = SRC_DIRECTORY + MANDELBROT_KER
 static const std::string OUTPUT_GLOBAL_KERNEL_NAME = "OutputGlobal";
 static const std::string OUTPUT_GLOBAL_KERNEL_FILE = SRC_DIRECTORY + OUTPUT_GLOBAL_KERNEL_NAME + ".cl";
 
-static const auto MAX_ITERATIONS = 25;
+static const auto MAX_ITERATIONS = 100;
 
 static const auto ZOOM = 1.0f;
 static const auto CENTER = std::make_pair(0.0f, 0.0f);
@@ -39,6 +41,42 @@ static const auto MIN_ORDER = 1.0f;
 static const auto ORDER = 15.0f;
 
 static const float DEFAULT_FIT = 2.5f;
+
+struct  MandelbrotSaveState
+{
+    cl_float2 complex;
+    cl_float2 constantComplex;
+    cl_uint count;
+    cl_float adjustedCount;
+    cl_float2 padding; // Needed to pack into the necessary svm alignment.
+} ;
+
+    std::vector<MandelbrotSaveState> generateZeroState(const float left, const float top, const float xSide, const float ySide, const uint32_t xMax, const uint32_t yMax)
+    {
+        std::vector<MandelbrotSaveState> saveStates;
+        // setting up the xscale and yscale 
+        const auto xScale = xSide / xMax;
+        const auto yScale = ySide / yMax;
+
+        // scanning every point in that rectangular area. 
+        // Each point represents a Complex number (x + yi). 
+        // Iterate that complex number 
+        for (uint32_t y = 0; y < yMax; y++)
+        {
+            for (uint32_t x = 0; x < xMax; x++)
+            {
+                MandelbrotSaveState saveState;
+                saveState.constantComplex = { x * xScale + left, y * yScale + top };
+                saveState.complex = saveState.constantComplex;
+                saveState.count = 1;
+                saveState.adjustedCount = 0.0f;
+
+                saveStates.push_back(saveState);
+            }
+        }
+
+        return saveStates;
+    }
 
 int main(int argc, char** argv)
 {
@@ -188,6 +226,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    /*
     const auto outputKernelString = Helper::slurp(OUTPUT_GLOBAL_KERNEL_FILE);
     const std::vector<std::string> outputProgramStrings{ outputKernelString };
 
@@ -216,28 +255,23 @@ int main(int argc, char** argv)
         return -1;
     }
 
-
     auto outputRunKernel = cl::KernelFunctor<
-        cl::Buffer,
-        cl::Buffer
+        cl::fine_svm_vector<cl_float2>&,
+        cl::fine_svm_vector<cl_float2>&
     >(outputGlobalProgram, OUTPUT_GLOBAL_KERNEL_NAME);
 
     cl_float2 ones = { 1.0f, 1.0f };
     cl_float2 negativeOnes = { -1.0f, -1.0f };
 
-    std::vector<cl_float2> inputVector(10, ones);
-    std::vector<cl_float2> outputVector(10, negativeOnes);
-
-    const cl::Buffer inputBuffer(inputVector.begin(), inputVector.end(), true);
-    const cl::Buffer outputBuffer2(outputVector.begin(), outputVector.end(), false);
+    cl::fine_svm_vector<cl_float2> inputVector(10, ones);
+    cl::fine_svm_vector<cl_float2> outputVector(10, negativeOnes);
 
     outputRunKernel(
         cl::EnqueueArgs(cl::NDRange(10)),
-        inputBuffer,
-        outputBuffer2
+        inputVector,
+        outputVector
     );
-
-    cl::copy(outputBuffer2, outputVector.begin(), outputVector.end());
+    */
 
     // Get the kernel string for the mandelbrot kernel.
     const auto kernelString = Helper::slurp(MANDELBROT_KERNEL_FILE);
@@ -297,8 +331,8 @@ int main(int argc, char** argv)
 
     // Setup the kernel so that when we have the arguments we can run it right away.
     auto runKernel = cl::KernelFunctor<
-        cl::Buffer, // FractalState
-        cl::Buffer, // OutputPixels
+        cl::coarse_svm_vector<MandelbrotSaveState>&, // FractalState
+        cl::coarse_svm_vector<cl_char>&, // OutputPixels
         cl::Buffer, // Colors
         uint32_t, // numColors
         uint32_t, // maxCount
@@ -306,28 +340,25 @@ int main(int argc, char** argv)
         cl_float // bailout
         >(mandelbrotProgram, MANDELBROT_KERNEL_NAME);
 
-    std::vector<uint8_t> outputPixels(4 * height*width, 0);
+    cl::coarse_svm_vector<cl_char> outputPixels(height * width * 3, 0);
 
-    const cl::Buffer outputPixelBuffer(outputPixels.begin(), outputPixels.end(), false);
+    //const cl::Buffer outputPixelBuffer(outputPixels.begin(), outputPixels.end(), false);
 
     // Set the global colors so that it is a fast lookup.
-    Helper::setGlobalColorsFade({});
+    auto setColors = Helper::setGlobalColorsFade({});
 
-    auto setColors = Helper::getAssignedColors();
     const auto numColors = static_cast<uint32_t>(setColors.size() / 3);
 
     const cl::Buffer colorBuffer(setColors.begin(), setColors.end(), true);
 
-    std::vector<uint8_t> pixel(4, 0);
-
-    std::vector<uint8_t> pixelMap(height * width * 3, 0);
+    //std::vector<uint8_t, cl::SVMAllocator<uint8_t, cl::SVMTraitFine<>>> pixelMap(height * width * 3, 0);
 
     std::map<std::pair<uint32_t, uint32_t>, double> timingMap;
 
     std::cout << "Starting local size optimization." << std::endl;
 
     // Save the zero state so that we don't have to regenerate it all the time.
-    auto zeroState = Helper::generateZeroState(left, top, xSide, ySide, width, height);
+    auto zeroState = generateZeroState(left, top, xSide, ySide, width, height);
 
     for (uint32_t localX = 1; localX <= maxWorkItemSize[0]; localX = localX << 1)
     {
@@ -353,7 +384,9 @@ int main(int argc, char** argv)
             {
                 const auto bailout = std::pow(FLT_MAX, 1.0f / (order + 2.0f));
 
-                const cl::Buffer fractalStateBuffer(zeroState.begin(), zeroState.end(), false);
+                auto runState = cl::coarse_svm_vector<MandelbrotSaveState>(zeroState.begin(), zeroState.end());
+
+                cl::unmapSVM(runState);
 
                 // Start the Kernel call.
                 const auto startKernelRun = std::chrono::system_clock::now();
@@ -361,8 +394,8 @@ int main(int argc, char** argv)
                 {
                     runKernel(
                         cl::EnqueueArgs(cl::NDRange(width, height), cl::NDRange(localX, localY)),
-                        fractalStateBuffer,
-                        outputPixelBuffer,
+                        runState,
+                        outputPixels,
                         colorBuffer,
                         numColors,
                         MAX_ITERATIONS,
@@ -370,9 +403,9 @@ int main(int argc, char** argv)
                         bailout
                     );
                 }
-                catch (...)
+                catch (std::runtime_error e)
                 {
-                    std::cout << "Error running kernels" << std::endl;
+                    std::cout << "Error running kernels." << e.what() << std::endl;
                     return -1;
                 }
 
@@ -453,15 +486,15 @@ int main(int argc, char** argv)
         // Start the Kernel call.
 
         const auto startCopyToKernelTime = std::chrono::system_clock::now();
-        const cl::Buffer fractalStateBuffer(zeroState.begin(), zeroState.end(), false);
+        auto runState = cl::coarse_svm_vector<MandelbrotSaveState>(zeroState.begin(), zeroState.end());
         const auto endCopyToKernelTime = std::chrono::system_clock::now();
         copyToKernelTime += endCopyToKernelTime - startCopyToKernelTime;
 
         const auto startKernelRun = std::chrono::system_clock::now();
         runKernel(
             cl::EnqueueArgs(cl::NDRange(width, height), cl::NDRange(lowestRunConfig.first, lowestRunConfig.second)),
-            fractalStateBuffer,
-            outputPixelBuffer,
+            runState,
+            outputPixels,
             colorBuffer,
             numColors,
             MAX_ITERATIONS,
@@ -472,7 +505,7 @@ int main(int argc, char** argv)
         kernelRunTime += endKernelRun - startKernelRun;
 
         const auto startCopyFromKernelTime = std::chrono::system_clock::now();
-        cl::copy(outputPixelBuffer, pixelMap.begin(), pixelMap.end());
+        cl::mapSVM(outputPixels);
         const auto endCopyFromKernelTime = std::chrono::system_clock::now();
         copyFromKernelTime += endCopyFromKernelTime - startCopyFromKernelTime;
 
@@ -490,7 +523,7 @@ int main(int argc, char** argv)
             return 1;
         }
 
-        memcpy(pixels, pixelMap.data(), pitch * height);
+        memcpy(pixels, outputPixels.data(), pitch * height);
 
         // Unlock the texture so that it updates.
         SDL_UnlockTexture(tex);

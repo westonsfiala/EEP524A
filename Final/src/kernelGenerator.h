@@ -41,7 +41,7 @@ private:
 
     // All the methods relating to the order mandelbrot.
     std::string getIncreaseOrderString() const;
-    std::vector<MandelbrotSaveStateOrder> generateZeroStateOrder(float left, float top, float xSide, float ySide);
+    std::vector<MandelbrotSaveStateOrder> generateZeroStateOrder(float left, float top, float xSide, float ySide) const;
     std::pair<uint32_t, uint32_t> findOptimalLocalSizeOrder(uint32_t numRuns);
     MandelbrotKernel prepareRunStateOrder(cl::Buffer& fractalState, cl::Buffer& outputPixels, cl::Buffer& colors, uint32_t& numColors);
     void runMandelbrotOrder(float order, float stepSize);
@@ -49,7 +49,7 @@ private:
 
     MandelbrotKernel getKernelFunctor(const std::string &kernelString) const;
 
-    double runKernel(MandelbrotKernel kernel, bool showVisuals,
+    double runKernelOrder(MandelbrotKernel kernel, bool showVisuals,
         float maxOrder, float stepSize, cl::Buffer fractalState, cl::Buffer outputPixels, cl::Buffer colors, uint32_t numColors) const;
 
     bool mIs2;

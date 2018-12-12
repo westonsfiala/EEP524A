@@ -1,17 +1,9 @@
 // Include the c++ wrapper of openCL and enable exceptions
 #include "helperFunctions.h"
+#include "kernelGenerator.h"
 
 #include <iostream>
-#include <vector>
-#include <ostream>
-#include <iostream>
 #include <SDL.h>
-#include <chrono>
-#include <map>
-#include <numeric>
-#include <assert.h>
-#include <float.h>
-#include "kernelGenerator.h"
 
 /*************************************************************************
 * CHANGE THE FOLLOWING LINES TO WHERE EVER YOU HAVE EVERYTHING MAPPED TO.
@@ -123,9 +115,9 @@ int main(int argc, char** argv)
     kernelGen.setWindowSize(width, height);
     kernelGen.setMaxIterations(MAX_ITERATIONS);
 
-    auto optimalLocalSizeOrder = kernelGen.findOptimalLocalSize(10);
+    kernelGen.findOptimalLocalSize(10);
 
-    kernelGen.runMandelbrot(15.0f);
+    kernelGen.runMandelbrot(ORDER);
 
     SDL_Quit();
 

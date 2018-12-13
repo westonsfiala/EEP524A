@@ -490,6 +490,8 @@ cl::Platform chooseClPlatform(bool &is2)
         std::cout << "Error setting default platform.";
         return chosenPlatform;
     }
+
+    return chosenPlatform;
 }
 
 void chooseClDevice(uint32_t &maxWorkGroupSize, std::vector<uint32_t>& maxWorkItemSize)

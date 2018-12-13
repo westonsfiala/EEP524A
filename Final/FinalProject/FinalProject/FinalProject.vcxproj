@@ -169,7 +169,9 @@
       <SubSystem>Console</SubSystem>
     </Link>
     <PostBuildEvent>
-      <Command>If exist "*.cl" copy "*.cl" "$(OutDir)\"</Command>
+      <Command>If exist "*.cl" copy "*.cl" "$(OutDir)\"
+xcopy /y /d  "$(ProjectDir)..\..\src\SDL2-2.0.9\lib\x64lib\SDL2.dll" "$(OutDir)"
+xcopy /y /d  "$(ProjectDir)..\..\src\clcomplex.h" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -196,7 +198,9 @@
       <SubSystem>Console</SubSystem>
     </Link>
     <PostBuildEvent>
-      <Command>If exist "*.cl" copy "*.cl" "$(OutDir)\"</Command>
+      <Command>If exist "*.cl" copy "*.cl" "$(OutDir)\"
+xcopy /y /d  "$(ProjectDir)..\..\src\SDL2-2.0.9\lib\x64lib\SDL2.dll" "$(OutDir)"
+xcopy /y /d  "$(ProjectDir)..\..\src\clcomplex.h" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

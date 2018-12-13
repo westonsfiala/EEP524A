@@ -15,12 +15,13 @@ static const std::string OUTPUT_DIRECTORY = BASE_DIRECTORY + "Outputs/";
 static const std::string SRC_DIRECTORY = BASE_DIRECTORY + "src/";
 static const std::string MANDELBROT_KERNEL_NAME = "Mandelbrot";
 static const std::string MANDELBROT_KERNEL_FILE = SRC_DIRECTORY + MANDELBROT_KERNEL_NAME + ".cl";
+static const std::string CLCOMPLEX_HEADER_FILE = SRC_DIRECTORY + "clcomplex.h";
 
 static const std::string OUTPUT_GLOBAL_KERNEL_NAME = "OutputGlobal";
 static const std::string OUTPUT_GLOBAL_KERNEL_FILE = SRC_DIRECTORY + OUTPUT_GLOBAL_KERNEL_NAME + ".cl";
 
 static const auto MAX_ITERATIONS = 100;
-static const auto ORDER = 15.0f;
+static const auto ORDER = 5.0f;
 
 int main(int argc, char** argv)
 {
@@ -64,13 +65,17 @@ int main(int argc, char** argv)
     // Kick up an instance of the kernel generator and get the kernel that we want to run.
     auto kernelGen = KernelGenerator(is2, maxWorkGroupSize, maxWorkItemSize, KernelGenerator::Order);
 
+    const auto clcomplexString = Helper::slurp(CLCOMPLEX_HEADER_FILE);
+
+    kernelGen.setKernelPrepend(clcomplexString);
+
     kernelGen.setWindowSize(width, height);
     kernelGen.setMaxIterations(MAX_ITERATIONS);
 
-    kernelGen.findOptimalLocalSize(5);
+    //kernelGen.findOptimalLocalSize(5);
     //kernelGen.findOptimalMaxIterations();
 
-    kernelGen.runMandelbrot(ORDER);
+    kernelGen.runMandelbrot(true, ORDER);
 
     SDL_Quit();
 

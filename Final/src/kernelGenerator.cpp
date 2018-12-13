@@ -41,6 +41,11 @@ void KernelGenerator::setMaxIterations(const uint32_t maxIterations)
     mMaxIterations = maxIterations;
 }
 
+void KernelGenerator::setKernelPrepend(std::string prepend)
+{
+    mPrepend = prepend;
+}
+
 std::pair<uint32_t, uint32_t> KernelGenerator::findOptimalLocalSize(const uint32_t numRuns)
 {
     // If we have the type 'order' run the optimizations.
@@ -65,19 +70,19 @@ uint32_t KernelGenerator::findOptimalMaxIterations()
     return mMaxIterations;
 }
 
-void KernelGenerator::runMandelbrot(const float order, const float stepSize) const
+void KernelGenerator::runMandelbrot(bool display, const float order, const float stepSize) const
 {
     // If we have the type 'order' run the program.
     if (mMandelbrotType == Order)
     {
-        runMandelbrotOrder(order, stepSize);
+        runMandelbrotOrder(display, order, stepSize);
     }
 }
 
 std::string KernelGenerator::getIncreaseOrderString() const
 {
     std::stringstream kernelString;
-    kernelString << R"(#include "../../src/clcomplex.h")" << std::endl << std::endl;
+    kernelString << mPrepend << std::endl;
     kernelString << "struct MandelbrotInitialStateOrder" << std::endl;
     kernelString << "{" << std::endl;
     kernelString << "    float2 constantComplex;" << std::endl;
@@ -333,7 +338,7 @@ KernelGenerator::MandelbrotKernel KernelGenerator::prepareRunStateOrder(cl::Buff
     return kernel;
 }
 
-void KernelGenerator::runMandelbrotOrder(const float order, const float stepSize) const
+void KernelGenerator::runMandelbrotOrder(const bool display, const float order, const float stepSize) const
 {
     cl::Buffer zeroStateBuffer;
     cl::Buffer outputPixelBuffer;
@@ -342,7 +347,7 @@ void KernelGenerator::runMandelbrotOrder(const float order, const float stepSize
     const auto kernel = prepareRunStateOrder(zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
 
     // ReSharper disable once CppExpressionWithoutSideEffects
-    runKernelOrder(kernel, true, order, stepSize, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
+    runKernelOrder(kernel, display, order, stepSize, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
 }
 
 cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, uint32_t, uint32_t, cl_float, cl_float> KernelGenerator::getKernelFunctor(const std::string& kernelString) const

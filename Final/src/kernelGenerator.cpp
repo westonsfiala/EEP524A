@@ -24,7 +24,6 @@ KernelGenerator::KernelGenerator(const bool is2, const uint32_t maxGroupSize, co
     mWindowSize = { 512, 512 };
     mLocalSize = { 4, 4 };
     mMaxIterations = 100;
-    mTimingOnly = false;
 }
 
 void KernelGenerator::setWindowSize(uint32_t width, uint32_t height)
@@ -66,7 +65,7 @@ uint32_t KernelGenerator::findOptimalMaxIterations()
     return mMaxIterations;
 }
 
-void KernelGenerator::runMandelbrot(const float order, const float stepSize)
+void KernelGenerator::runMandelbrot(const float order, const float stepSize) const
 {
     // If we have the type 'order' run the program.
     if (mMandelbrotType == Order)
@@ -173,7 +172,7 @@ std::string KernelGenerator::getIncreaseOrderString() const
 std::vector<KernelGenerator::MandelbrotSaveStateOrder> KernelGenerator::generateZeroStateOrder(const float left, const float top, const float xSide, const float ySide) const
 {
     std::vector<MandelbrotSaveStateOrder> initialStates;
-    // setting up the xscale and yscale 
+    // setting up the xScale and yScale 
     const auto xScale = xSide / mWindowSize.first;
     const auto yScale = ySide / mWindowSize.second;
 
@@ -213,6 +212,12 @@ std::pair<uint32_t, uint32_t> KernelGenerator::findOptimalLocalSizeOrder(const u
         {
             // don't run any configurations that exceed the max work group size.
             if (localX * localY > mMaxGroupSize)
+            {
+                continue;
+            }
+
+            // 1x1 is the slowest always, don't even try it.
+            if(localX == 1 && localY == 1)
             {
                 continue;
             }
@@ -273,12 +278,11 @@ uint32_t KernelGenerator::findOptimalMaxIterationsOrder()
     mMaxIterations = 25;
 
     std::cout << "Starting max iteration optimization" << std::endl;
-    mTimingOnly = true;
     // Wait till we know we will be taking time processing the kernel before we stop optimizing.
     while((runtime + lastRuntime)/2.0 < 0.25)
     {
         std::cout << "Starting timing for max iterations = " << std::to_string(mMaxIterations) << std::endl;
-        auto runTimes = runKernelOrder(kernel, true, 2.0f, 1.0f, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
+        auto runTimes = runKernelOrder(kernel, false, 2.0f, 1.0f, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
 
         lastRuntime = runtime;
         // The third runtime is the kernel runtime.
@@ -290,7 +294,6 @@ uint32_t KernelGenerator::findOptimalMaxIterationsOrder()
     std::cout << "Ending max iteration optimization." << std::endl;
     std::cout << "Iterations chosen = " << std::to_string(mMaxIterations) << std::endl;
 
-    mTimingOnly = false;
     return mMaxIterations;
 }
 
@@ -330,7 +333,7 @@ KernelGenerator::MandelbrotKernel KernelGenerator::prepareRunStateOrder(cl::Buff
     return kernel;
 }
 
-void KernelGenerator::runMandelbrotOrder(const float order, const float stepSize)
+void KernelGenerator::runMandelbrotOrder(const float order, const float stepSize) const
 {
     cl::Buffer zeroStateBuffer;
     cl::Buffer outputPixelBuffer;
@@ -338,8 +341,8 @@ void KernelGenerator::runMandelbrotOrder(const float order, const float stepSize
     uint32_t numColors;
     const auto kernel = prepareRunStateOrder(zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
 
-    // ReSharper disable once CppDeclaratorNeverUsed
-    auto time = runKernelOrder(kernel, true, order, stepSize, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
+    // ReSharper disable once CppExpressionWithoutSideEffects
+    runKernelOrder(kernel, true, order, stepSize, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
 }
 
 cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, uint32_t, uint32_t, cl_float, cl_float> KernelGenerator::getKernelFunctor(const std::string &kernelString) const
@@ -400,62 +403,58 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
 
     const auto totalPixelSize = mWindowSize.first * mWindowSize.second * 3;
 
-    std::vector<uint8_t> pixelMap(totalPixelSize,0);
-    std::vector<uint8_t> pixelMap2(totalPixelSize,0);
-
     // Get the command queue so we can enqueue our mappings right after the run.
     auto commandQueue = cl::CommandQueue::getDefault();
 
-    auto waitEvent1 = cl::Event();
-    auto waitEvent2 = cl::Event();
+    uint8_t* pixelPointer2 = nullptr;
+
+    cl::Event waitEvent1;
+    cl::Event waitEvent2;
 
     // Create a second buffer so that we can double buffer the kernel keeping its runtime even higher.
-    cl::Buffer doubleBufferPixels(pixelMap2.begin(), pixelMap2.end(), false);
+    const auto doubleBufferPixels(outputPixels);
 
-    // If we have visuals, initialize everything.
-    if (showVisuals)
+    // If we have visuals, actually show the window.
+    if (!showVisuals)
     {
-        if (mTimingOnly)
+        // Create the SDL window that we will use.
+        win = SDL_CreateWindow("Mandelbrot Set", 0, 0, mWindowSize.first, mWindowSize.second, SDL_WINDOW_HIDDEN);
+        if (win == nullptr)
         {
-            // Create the SDL window that we will use.
-            win = SDL_CreateWindow("Mandelbrot Set", 0, 0, mWindowSize.first, mWindowSize.second, SDL_WINDOW_HIDDEN);
-            if (win == nullptr)
-            {
-                std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
-                SDL_Quit();
-                return {};
-            }
-        }
-        else
-        {
-
-            // Create the SDL window that we will use.
-            win = SDL_CreateWindow("Mandelbrot Set", 0, 0, mWindowSize.first, mWindowSize.second, SDL_WINDOW_SHOWN);
-            if (win == nullptr)
-            {
-                std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
-                SDL_Quit();
-                return {};
-            }
-        }
-
-        // Create the Renderer that will render our image into the window.
-        ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-        if (ren == nullptr)
-        {
-            SDL_DestroyWindow(win);
-            std::cout << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
+            std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
             SDL_Quit();
             return {};
         }
+    }
+    else
+    {
 
-        tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, mWindowSize.first, mWindowSize.second);
-        if (tex == nullptr)
+        // Create the SDL window that we will use.
+        win = SDL_CreateWindow("Mandelbrot Set", 0, 0, mWindowSize.first, mWindowSize.second, SDL_WINDOW_SHOWN);
+        if (win == nullptr)
         {
-            std::cout << "SDL_CreateTexture Error: " << SDL_GetError() << std::endl;
+            std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
             SDL_Quit();
             return {};
         }
+    }
+
+    // Create the Renderer that will render our image into the window.
+    ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (ren == nullptr)
+    {
+        SDL_DestroyWindow(win);
+        std::cout << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return {};
+    }
+
+    tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, mWindowSize.first, mWindowSize.second);
+    if (tex == nullptr)
+    {
+        std::cout << "SDL_CreateTexture Error: " << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return {};
     }
 
     // Start the timing analysis.
@@ -466,8 +465,8 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
     std::chrono::duration<double> bailoutCalcTime(0);
     std::chrono::duration<double> kernelQueueTime(0);
     std::chrono::duration<double> kernelRunTime(0);
-    std::chrono::duration<double> copyFromKernelTime(0);
     std::chrono::duration<double> textureGenTime(0);
+    std::chrono::duration<double> unmapBufferTime(0);
     std::chrono::duration<double> pixelPutTime(0);
 
     bool firstRun = true;
@@ -476,11 +475,12 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
     for (auto order = MIN_ORDER; order < maxOrder; order += stepSize)
     {
         // The first run, we don't have the double buffer running.
-        if(!firstRun && showVisuals)
+        if(!firstRun)
         {
             // Wait for the double buffer to finish so that we can kick off the next kernel.
             startSubTime = std::chrono::system_clock::now();
-            cl::finish();
+            // ReSharper disable once CppExpressionWithoutSideEffects
+            waitEvent2.wait();
             endSubTime = std::chrono::system_clock::now();
             kernelRunTime += endSubTime - startSubTime;
         }
@@ -504,18 +504,13 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
             order,
             bailout
         );
-        //commandQueue.enqueueMapBuffer(outputPixels, false, CL_MAP_READ, 0, totalPixelSize, nullptr, &waitEvent1);
+        uint8_t* pixelPointer1 = static_cast<uint8_t*>(commandQueue.enqueueMapBuffer(outputPixels, false, CL_MAP_READ, 0, totalPixelSize, nullptr, &waitEvent1));
         endSubTime = std::chrono::system_clock::now();
         kernelQueueTime += endSubTime - startSubTime;
 
         // In the first run we don't have the double buffer running.
-        if(!firstRun && showVisuals)
+        if(!firstRun)
         {
-            // Start processing the double buffer data.
-            startSubTime = std::chrono::system_clock::now();
-            cl::copy(doubleBufferPixels, pixelMap.begin(), pixelMap.end());
-            endSubTime = std::chrono::system_clock::now();
-            copyFromKernelTime += endSubTime - startSubTime;
 
             startSubTime = std::chrono::system_clock::now();
             // Lock the texture so we can write to it.
@@ -532,103 +527,101 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
             }
 
             // Push the pixels to the texture.
-            memcpy(pixels, pixelMap.data(), pitch * mWindowSize.second);
+            memcpy(pixels, pixelPointer2, pitch * mWindowSize.second);
 
             // Unlock the texture so that it updates.
             SDL_UnlockTexture(tex);
             endSubTime = std::chrono::system_clock::now();
             textureGenTime += endSubTime - startSubTime;
 
-            if (!mTimingOnly)
-            {
-                startSubTime = std::chrono::system_clock::now();
-                //First clear the renderer
-                SDL_RenderClear(ren);
-                //Draw the texture
-                SDL_RenderCopy(ren, tex, nullptr, nullptr);
-                //Update the screen
-                SDL_RenderPresent(ren);
-                endSubTime = std::chrono::system_clock::now();
-                pixelPutTime += endSubTime - startSubTime;
-            }
+            startSubTime = std::chrono::system_clock::now();
+            // ReSharper disable once CppExpressionWithoutSideEffects
+            commandQueue.enqueueUnmapMemObject(doubleBufferPixels, pixelPointer2);
+            endSubTime = std::chrono::system_clock::now();
+            unmapBufferTime += endSubTime - startSubTime;
+
+            startSubTime = std::chrono::system_clock::now();
+            //First clear the renderer
+            SDL_RenderClear(ren);
+            //Draw the texture
+            SDL_RenderCopy(ren, tex, nullptr, nullptr);
+            //Update the screen
+            SDL_RenderPresent(ren);
+            endSubTime = std::chrono::system_clock::now();
+            pixelPutTime += endSubTime - startSubTime;
         }
 
         // Wait for the first kernel to finish.
-        startSubTime = std::chrono::system_clock::now();
-        cl::finish();
+        startSubTime = std::chrono::system_clock::now(); 
+        // ReSharper disable once CppExpressionWithoutSideEffects
+        waitEvent1.wait();
         endSubTime = std::chrono::system_clock::now();
         kernelRunTime += endSubTime - startSubTime;
 
-        // If we are showing the results do so.
-        if (showVisuals)
+        // Kick off the second kernel to keep processing while we display the data from the first.
+        order += stepSize;
+
+        // Don't kick it off if we are going to process something that we don't want.
+        if(order < maxOrder)
         {
-            // Kick off the second kernel to keep processing while we display the data from the first.
-            order += stepSize;
-
-            // Don't kick it off if we are going to process something that we don't want.
-            if(order < maxOrder)
-            {
-                startSubTime = std::chrono::system_clock::now();
-                const auto bailout2 = std::pow(std::pow(FLT_MAX, 1.0f / (order + 2.0f)), 1.0f / 2.0f);
-                endSubTime = std::chrono::system_clock::now();
-                bailoutCalcTime += endSubTime - startSubTime;
-
-                startSubTime = std::chrono::system_clock::now();
-                kernel(
-                    cl::EnqueueArgs(cl::NDRange(mWindowSize.first, mWindowSize.second), cl::NDRange(mLocalSize.first, mLocalSize.second)),
-                    fractalState,
-                    doubleBufferPixels,
-                    colors,
-                    numColors,
-                    mMaxIterations,
-                    order,
-                    bailout2
-                );
-                endSubTime = std::chrono::system_clock::now();
-                kernelQueueTime += endSubTime - startSubTime;
-            }
-
-            // Get the data from the first kernel
             startSubTime = std::chrono::system_clock::now();
-            cl::copy(outputPixels, pixelMap.begin(), pixelMap.end());
+            const auto bailout2 = std::pow(std::pow(FLT_MAX, 1.0f / (order + 2.0f)), 1.0f / 2.0f);
             endSubTime = std::chrono::system_clock::now();
-            copyFromKernelTime += endSubTime - startSubTime;
+            bailoutCalcTime += endSubTime - startSubTime;
 
-            // Lock the texture so we can write to it.
             startSubTime = std::chrono::system_clock::now();
-            void* pixels = nullptr;
-            auto pitch = 0;
-            if (SDL_LockTexture(tex, nullptr, &pixels, &pitch) != 0)
-            {
-                SDL_DestroyTexture(tex);
-                SDL_DestroyRenderer(ren);
-                SDL_DestroyWindow(win);
-                std::cout << "SDL_LockTexture Error: " << SDL_GetError() << std::endl;
-                SDL_Quit();
-                return {};
-            }
-
-            // Copy the pixel data to the texture.
-            memcpy(pixels, pixelMap.data(), pitch * mWindowSize.second);
-
-            // Unlock the texture so that it updates.
-            SDL_UnlockTexture(tex);
+            kernel(
+                cl::EnqueueArgs(cl::NDRange(mWindowSize.first, mWindowSize.second), cl::NDRange(mLocalSize.first, mLocalSize.second)),
+                fractalState,
+                doubleBufferPixels,
+                colors,
+                numColors,
+                mMaxIterations,
+                order,
+                bailout2
+            );
+            pixelPointer2 = static_cast<uint8_t*>(commandQueue.enqueueMapBuffer(doubleBufferPixels, false, CL_MAP_READ, 0, totalPixelSize, nullptr, &waitEvent2));
             endSubTime = std::chrono::system_clock::now();
-            textureGenTime += endSubTime - startSubTime;
-
-            if (!mTimingOnly)
-            {
-                startSubTime = std::chrono::system_clock::now();
-                //Clear the renderer
-                SDL_RenderClear(ren);
-                //Draw the texture
-                SDL_RenderCopy(ren, tex, nullptr, nullptr);
-                //Update the screen
-                SDL_RenderPresent(ren);
-                endSubTime = std::chrono::system_clock::now();
-                pixelPutTime += endSubTime - startSubTime;
-            }
+            kernelQueueTime += endSubTime - startSubTime;
         }
+
+        // Lock the texture so we can write to it.
+        startSubTime = std::chrono::system_clock::now();
+        void* pixels = nullptr;
+        auto pitch = 0;
+        if (SDL_LockTexture(tex, nullptr, &pixels, &pitch) != 0)
+        {
+            SDL_DestroyTexture(tex);
+            SDL_DestroyRenderer(ren);
+            SDL_DestroyWindow(win);
+            std::cout << "SDL_LockTexture Error: " << SDL_GetError() << std::endl;
+            SDL_Quit();
+            return {};
+        }
+
+        // Copy the pixel data to the texture.
+        memcpy(pixels, pixelPointer1, pitch * mWindowSize.second);
+
+        // Unlock the texture so that it updates.
+        SDL_UnlockTexture(tex);
+        endSubTime = std::chrono::system_clock::now();
+        textureGenTime += endSubTime - startSubTime;
+
+        startSubTime = std::chrono::system_clock::now();
+        // ReSharper disable once CppExpressionWithoutSideEffects
+        commandQueue.enqueueUnmapMemObject(outputPixels, pixelPointer1);
+        endSubTime = std::chrono::system_clock::now();
+        unmapBufferTime += endSubTime - startSubTime;
+
+        startSubTime = std::chrono::system_clock::now();
+        //Clear the renderer
+        SDL_RenderClear(ren);
+        //Draw the texture
+        SDL_RenderCopy(ren, tex, nullptr, nullptr);
+        //Update the screen
+        SDL_RenderPresent(ren);
+        endSubTime = std::chrono::system_clock::now();
+        pixelPutTime += endSubTime - startSubTime;
 
         firstRun = false;
     }
@@ -642,11 +635,11 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
     timings.push_back(bailoutCalcTime.count());
     timings.push_back(kernelQueueTime.count());
     timings.push_back(kernelRunTime.count());
-    timings.push_back(copyFromKernelTime.count());
     timings.push_back(textureGenTime.count());
+    timings.push_back(unmapBufferTime.count());
     timings.push_back(pixelPutTime.count());
 
-    if (showVisuals && !mTimingOnly)
+    if (showVisuals)
     {
         std::cout << "Run Time Mandelbrot for " << std::to_string(mMaxIterations) << " = " << diff.count() << " seconds" << std::endl;
         auto otherTime = diff.count();
@@ -660,11 +653,11 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
         std::cout << "Kernel Run Time = " << kernelRunTime.count() << " seconds" << std::endl;
         otherTime -= kernelRunTime.count();
 
-        std::cout << "Copy From Kernel Time = " << copyFromKernelTime.count() << " seconds" << std::endl;
-        otherTime -= copyFromKernelTime.count();
-
         std::cout << "Texture Gen Time = " << textureGenTime.count() << " seconds" << std::endl;
         otherTime -= textureGenTime.count();
+
+        std::cout << "Unmap Buffer Time = " << unmapBufferTime.count() << " seconds" << std::endl;
+        otherTime -= unmapBufferTime.count();
 
         std::cout << "Pixel Put Time = " << pixelPutTime.count() << " seconds" << std::endl;
         otherTime -= pixelPutTime.count();
@@ -674,11 +667,11 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
 
         const auto fps = (maxOrder - MIN_ORDER) / stepSize / diff.count();
         std::cout << "Average frames per second = " << std::to_string(fps) << std::endl;
-
-        SDL_DestroyTexture(tex);
-        SDL_DestroyRenderer(ren);
-        SDL_DestroyWindow(win);
     }
+
+    SDL_DestroyTexture(tex);
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
 
     return timings;
 }

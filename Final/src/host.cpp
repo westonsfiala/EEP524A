@@ -19,7 +19,7 @@ static const std::string MANDELBROT_KERNEL_FILE = SRC_DIRECTORY + MANDELBROT_KER
 static const std::string OUTPUT_GLOBAL_KERNEL_NAME = "OutputGlobal";
 static const std::string OUTPUT_GLOBAL_KERNEL_FILE = SRC_DIRECTORY + OUTPUT_GLOBAL_KERNEL_NAME + ".cl";
 
-static const auto MAX_ITERATIONS = 25;
+static const auto MAX_ITERATIONS = 100;
 static const auto ORDER = 15.0f;
 
 int main(int argc, char** argv)

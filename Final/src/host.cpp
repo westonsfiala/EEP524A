@@ -45,54 +45,6 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    // Remove when you don't need to do any random testing.
-    /*
-    const auto outputKernelString = Helper::slurp(OUTPUT_GLOBAL_KERNEL_FILE);
-    const std::vector<std::string> outputProgramStrings{ outputKernelString };
-
-    cl::Program outputGlobalProgram(outputProgramStrings);
-    try {
-        std::string buildString;
-        if (is2)
-        {
-            buildString = "-cl-std=CL2.0";
-        }
-        else
-        {
-            buildString = "-cl-std=CL1.2";
-        }
-        // ReSharper disable CppExpressionWithoutSideEffects
-        outputGlobalProgram.build(buildString.c_str());
-        // ReSharper restore CppExpressionWithoutSideEffects
-    }
-    catch (...) {
-        // Print build info for all devices
-        auto buildErr = CL_SUCCESS;
-        auto buildInfo = outputGlobalProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(&buildErr);
-        for (auto &pair : buildInfo) {
-            std::cerr << pair.second << std::endl << std::endl;
-        }
-        return -1;
-    }
-
-    auto outputRunKernel = cl::KernelFunctor<
-        cl::fine_svm_vector<cl_float2>&,
-        cl::fine_svm_vector<cl_float2>&
-    >(outputGlobalProgram, OUTPUT_GLOBAL_KERNEL_NAME);
-
-    cl_float2 ones = { 1.0f, 1.0f };
-    cl_float2 negativeOnes = { -1.0f, -1.0f };
-
-    cl::fine_svm_vector<cl_float2> inputVector(10, ones);
-    cl::fine_svm_vector<cl_float2> outputVector(10, negativeOnes);
-
-    outputRunKernel(
-        cl::EnqueueArgs(cl::NDRange(10)),
-        inputVector,
-        outputVector
-    );
-    */
-
     // Initialize the SDL library
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
@@ -115,7 +67,8 @@ int main(int argc, char** argv)
     kernelGen.setWindowSize(width, height);
     kernelGen.setMaxIterations(MAX_ITERATIONS);
 
-    kernelGen.findOptimalLocalSize(10);
+    kernelGen.findOptimalLocalSize(5);
+    //kernelGen.findOptimalMaxIterations();
 
     kernelGen.runMandelbrot(ORDER);
 

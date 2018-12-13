@@ -21,19 +21,19 @@ KernelGenerator::KernelGenerator(const bool is2, const uint32_t maxGroupSize, co
     mMandelbrotType = type;
 
     // Set the values that are set by methods to some good enough values.
-    mWindowSize = { 512, 512 };
-    mLocalSize = { 4, 4 };
+    mWindowSize = {512, 512};
+    mLocalSize = {4, 4};
     mMaxIterations = 100;
 }
 
 void KernelGenerator::setWindowSize(uint32_t width, uint32_t height)
 {
-    mWindowSize = { width, height };
+    mWindowSize = {width, height};
 }
 
 void KernelGenerator::setLocalSize(uint32_t x, uint32_t y)
 {
-    mLocalSize = { x, y };
+    mLocalSize = {x, y};
 }
 
 void KernelGenerator::setMaxIterations(const uint32_t maxIterations)
@@ -44,7 +44,7 @@ void KernelGenerator::setMaxIterations(const uint32_t maxIterations)
 std::pair<uint32_t, uint32_t> KernelGenerator::findOptimalLocalSize(const uint32_t numRuns)
 {
     // If we have the type 'order' run the optimizations.
-    if(mMandelbrotType == Order)
+    if (mMandelbrotType == Order)
     {
         return findOptimalLocalSizeOrder(numRuns);
     }
@@ -184,7 +184,7 @@ std::vector<KernelGenerator::MandelbrotSaveStateOrder> KernelGenerator::generate
         for (uint32_t x = 0; x < mWindowSize.first; x++)
         {
             MandelbrotSaveStateOrder initialState;
-            initialState.constantComplex = { x * xScale + left, y * yScale + top };
+            initialState.constantComplex = {x * xScale + left, y * yScale + top};
 
             initialStates.push_back(initialState);
         }
@@ -217,7 +217,7 @@ std::pair<uint32_t, uint32_t> KernelGenerator::findOptimalLocalSizeOrder(const u
             }
 
             // 1x1 is the slowest always, don't even try it.
-            if(localX == 1 && localY == 1)
+            if (localX == 1 && localY == 1)
             {
                 continue;
             }
@@ -230,7 +230,7 @@ std::pair<uint32_t, uint32_t> KernelGenerator::findOptimalLocalSizeOrder(const u
 
             std::cout << "Starting timing for x = " << std::to_string(localX) + " y = " << std::to_string(localY) << std::endl;
             std::vector<double> runTimes;
-            mLocalSize = { localX, localY };
+            mLocalSize = {localX, localY};
 
             for (uint32_t run = 0; run < numRuns; run++)
             {
@@ -279,7 +279,7 @@ uint32_t KernelGenerator::findOptimalMaxIterationsOrder()
 
     std::cout << "Starting max iteration optimization" << std::endl;
     // Wait till we know we will be taking time processing the kernel before we stop optimizing.
-    while((runtime + lastRuntime)/2.0 < 0.25)
+    while ((runtime + lastRuntime) / 2.0 < 0.25)
     {
         std::cout << "Starting timing for max iterations = " << std::to_string(mMaxIterations) << std::endl;
         auto runTimes = runKernelOrder(kernel, false, 2.0f, 1.0f, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
@@ -345,10 +345,10 @@ void KernelGenerator::runMandelbrotOrder(const float order, const float stepSize
     runKernelOrder(kernel, true, order, stepSize, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
 }
 
-cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, uint32_t, uint32_t, cl_float, cl_float> KernelGenerator::getKernelFunctor(const std::string &kernelString) const
+cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, uint32_t, uint32_t, cl_float, cl_float> KernelGenerator::getKernelFunctor(const std::string& kernelString) const
 {
     // Get the kernel string for the mandelbrot kernel.
-    const std::vector<std::string> programStrings{ kernelString };
+    const std::vector<std::string> programStrings{kernelString};
 
     cl::Program mandelbrotProgram(programStrings);
     try
@@ -393,13 +393,10 @@ cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, uint32_t, uint32_t, cl_flo
 }
 
 std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, const bool showVisuals, const float maxOrder, const float stepSize,
-                                  const cl::Buffer fractalState, const cl::Buffer outputPixels, const cl::Buffer colors, const uint32_t numColors) const
+                                                    const cl::Buffer fractalState, const cl::Buffer outputPixels, const cl::Buffer colors, const uint32_t numColors) const
 {
-
     cl::Event myEvent;
-    SDL_Window* win = nullptr;
-    SDL_Renderer* ren = nullptr;
-    SDL_Texture* tex = nullptr;
+    SDL_Window* win;
 
     const auto totalPixelSize = mWindowSize.first * mWindowSize.second * 3;
 
@@ -428,7 +425,6 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
     }
     else
     {
-
         // Create the SDL window that we will use.
         win = SDL_CreateWindow("Mandelbrot Set", 0, 0, mWindowSize.first, mWindowSize.second, SDL_WINDOW_SHOWN);
         if (win == nullptr)
@@ -440,7 +436,7 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
     }
 
     // Create the Renderer that will render our image into the window.
-    ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_Renderer* ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (ren == nullptr)
     {
         SDL_DestroyWindow(win);
@@ -449,7 +445,7 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
         return {};
     }
 
-    tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, mWindowSize.first, mWindowSize.second);
+    SDL_Texture* tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, mWindowSize.first, mWindowSize.second);
     if (tex == nullptr)
     {
         std::cout << "SDL_CreateTexture Error: " << SDL_GetError() << std::endl;
@@ -475,7 +471,7 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
     for (auto order = MIN_ORDER; order < maxOrder; order += stepSize)
     {
         // The first run, we don't have the double buffer running.
-        if(!firstRun)
+        if (!firstRun)
         {
             // Wait for the double buffer to finish so that we can kick off the next kernel.
             startSubTime = std::chrono::system_clock::now();
@@ -509,9 +505,8 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
         kernelQueueTime += endSubTime - startSubTime;
 
         // In the first run we don't have the double buffer running.
-        if(!firstRun)
+        if (!firstRun)
         {
-
             startSubTime = std::chrono::system_clock::now();
             // Lock the texture so we can write to it.
             void* pixels = nullptr;
@@ -552,7 +547,7 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
         }
 
         // Wait for the first kernel to finish.
-        startSubTime = std::chrono::system_clock::now(); 
+        startSubTime = std::chrono::system_clock::now();
         // ReSharper disable once CppExpressionWithoutSideEffects
         waitEvent1.wait();
         endSubTime = std::chrono::system_clock::now();
@@ -562,7 +557,7 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
         order += stepSize;
 
         // Don't kick it off if we are going to process something that we don't want.
-        if(order < maxOrder)
+        if (order < maxOrder)
         {
             startSubTime = std::chrono::system_clock::now();
             const auto bailout2 = std::pow(std::pow(FLT_MAX, 1.0f / (order + 2.0f)), 1.0f / 2.0f);

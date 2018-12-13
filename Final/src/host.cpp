@@ -39,7 +39,7 @@ int main(int argc, char** argv)
     std::vector<uint32_t> maxWorkItemSize;
     Helper::chooseClDevice(maxWorkGroupSize, maxWorkItemSize);
 
-    if(chosenPlatform() == nullptr)
+    if (chosenPlatform() == nullptr)
     {
         std::cout << "No device has been chosen as default." << std::endl;
         return -1;

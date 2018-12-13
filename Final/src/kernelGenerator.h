@@ -20,7 +20,6 @@ public:
     uint32_t findOptimalMaxIterations();
     void runMandelbrot(float order, float stepSize = 0.01f) const;
 
-
 private:
 
     static const std::string KERNEL_NAME;
@@ -48,11 +47,10 @@ private:
     MandelbrotKernel prepareRunStateOrder(cl::Buffer& fractalState, cl::Buffer& outputPixels, cl::Buffer& colors, uint32_t& numColors) const;
     void runMandelbrotOrder(float order, float stepSize) const;
 
-
-    MandelbrotKernel getKernelFunctor(const std::string &kernelString) const;
+    MandelbrotKernel getKernelFunctor(const std::string& kernelString) const;
 
     std::vector<double> runKernelOrder(MandelbrotKernel kernel, bool showVisuals,
-        float maxOrder, float stepSize, cl::Buffer fractalState, cl::Buffer outputPixels, cl::Buffer colors, uint32_t numColors) const;
+                                       float maxOrder, float stepSize, cl::Buffer fractalState, cl::Buffer outputPixels, cl::Buffer colors, uint32_t numColors) const;
 
     bool mIs2;
     uint32_t mMaxGroupSize;

@@ -70,13 +70,30 @@ uint32_t KernelGenerator::findOptimalMaxIterations()
     return mMaxIterations;
 }
 
-void KernelGenerator::runMandelbrot(bool display, const float order, const float stepSize) const
+std::vector<double> KernelGenerator::runMandelbrot(bool display, const float order, const float stepSize) const
 {
     // If we have the type 'order' run the program.
     if (mMandelbrotType == Order)
     {
-        runMandelbrotOrder(display, order, stepSize);
+        return runMandelbrotOrder(display, order, stepSize);
     }
+
+    return {};
+}
+
+std::vector<std::string> KernelGenerator::getTimingNames()
+{
+    std::vector<std::string> names;
+    names.push_back("Total");
+    names.push_back("Bailout Calculation");
+    names.push_back("Kernel Enqueue");
+    names.push_back("Kernel Run");
+    names.push_back("Texture Generation");
+    names.push_back("Unmap Buffer");
+    names.push_back("Pixel Display");
+    names.push_back("Frames Per Second");
+    names.push_back("Overhead");
+    return names;
 }
 
 std::string KernelGenerator::getIncreaseOrderString() const
@@ -338,7 +355,7 @@ KernelGenerator::MandelbrotKernel KernelGenerator::prepareRunStateOrder(cl::Buff
     return kernel;
 }
 
-void KernelGenerator::runMandelbrotOrder(const bool display, const float order, const float stepSize) const
+std::vector<double> KernelGenerator::runMandelbrotOrder(const bool display, const float order, const float stepSize) const
 {
     cl::Buffer zeroStateBuffer;
     cl::Buffer outputPixelBuffer;
@@ -346,8 +363,7 @@ void KernelGenerator::runMandelbrotOrder(const bool display, const float order, 
     uint32_t numColors;
     const auto kernel = prepareRunStateOrder(zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
 
-    // ReSharper disable once CppExpressionWithoutSideEffects
-    runKernelOrder(kernel, display, order, stepSize, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
+    return runKernelOrder(kernel, display, order, stepSize, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
 }
 
 cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, uint32_t, uint32_t, cl_float, cl_float> KernelGenerator::getKernelFunctor(const std::string& kernelString) const
@@ -631,6 +647,10 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
     std::vector<double> timings;
 
     std::chrono::duration<double> diff = endTime - startTime;
+
+    // Get the frames per second.
+    const auto fps = (maxOrder - MIN_ORDER) / stepSize / diff.count();
+
     timings.push_back(diff.count());
     timings.push_back(bailoutCalcTime.count());
     timings.push_back(kernelQueueTime.count());
@@ -638,6 +658,7 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
     timings.push_back(textureGenTime.count());
     timings.push_back(unmapBufferTime.count());
     timings.push_back(pixelPutTime.count());
+    timings.push_back(fps);
 
     if (showVisuals)
     {
@@ -665,7 +686,6 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
         std::cout << "Other Time = " << otherTime << " seconds" << std::endl;
         timings.push_back(otherTime);
 
-        const auto fps = (maxOrder - MIN_ORDER) / stepSize / diff.count();
         std::cout << "Average frames per second = " << std::to_string(fps) << std::endl;
     }
 

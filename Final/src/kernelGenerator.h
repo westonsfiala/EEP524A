@@ -19,7 +19,8 @@ public:
 
     std::pair<uint32_t, uint32_t> findOptimalLocalSize(uint32_t numRuns);
     uint32_t findOptimalMaxIterations();
-    void runMandelbrot(bool display, float order, float stepSize = 0.01f) const;
+    std::vector<double> runMandelbrot(bool display, float order, float stepSize = 0.01f) const;
+    static std::vector<std::string> getTimingNames();
 
 private:
 
@@ -46,7 +47,7 @@ private:
     std::pair<uint32_t, uint32_t> findOptimalLocalSizeOrder(uint32_t numRuns);
     uint32_t findOptimalMaxIterationsOrder();
     MandelbrotKernel prepareRunStateOrder(cl::Buffer& fractalState, cl::Buffer& outputPixels, cl::Buffer& colors, uint32_t& numColors) const;
-    void runMandelbrotOrder(bool display, float order, float stepSize) const;
+    std::vector<double> runMandelbrotOrder(bool display, float order, float stepSize) const;
 
     MandelbrotKernel getKernelFunctor(const std::string& kernelString) const;
 

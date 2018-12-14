@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <SDL.h>
+#include <map>
 
 /*************************************************************************
 * CHANGE THE FOLLOWING LINES TO WHERE EVER YOU HAVE EVERYTHING MAPPED TO.
@@ -11,17 +12,16 @@
 //Set the output directories that need to be used.
 static const std::string BASE_DIRECTORY = "C:/work/GitHub/EEP524A/Final/";
 
-static const std::string OUTPUT_DIRECTORY = BASE_DIRECTORY + "Outputs/";
+static const std::string OUTPUT_DIRECTORY = BASE_DIRECTORY + "output/";
+static const std::string RESULTS_FILE = OUTPUT_DIRECTORY + "timingResults.csv";
+
 static const std::string SRC_DIRECTORY = BASE_DIRECTORY + "src/";
 static const std::string MANDELBROT_KERNEL_NAME = "Mandelbrot";
 static const std::string MANDELBROT_KERNEL_FILE = SRC_DIRECTORY + MANDELBROT_KERNEL_NAME + ".cl";
 static const std::string CLCOMPLEX_HEADER_FILE = SRC_DIRECTORY + "clcomplex.h";
 
-static const std::string OUTPUT_GLOBAL_KERNEL_NAME = "OutputGlobal";
-static const std::string OUTPUT_GLOBAL_KERNEL_FILE = SRC_DIRECTORY + OUTPUT_GLOBAL_KERNEL_NAME + ".cl";
-
-static const auto MAX_ITERATIONS = 100;
-static const auto ORDER = 5.0f;
+static const auto MAX_ITERATIONS = 1000;
+static const auto ORDER = 11.0f;
 
 int main(int argc, char** argv)
 {
@@ -70,12 +70,28 @@ int main(int argc, char** argv)
     kernelGen.setKernelPrepend(clcomplexString);
 
     kernelGen.setWindowSize(width, height);
-    kernelGen.setMaxIterations(MAX_ITERATIONS);
 
     //kernelGen.findOptimalLocalSize(5);
     //kernelGen.findOptimalMaxIterations();
 
-    kernelGen.runMandelbrot(true, ORDER);
+    std::map<uint32_t, std::vector<double>> runTimeMap;
+    
+    // Loop over 1 -> max iterations and print out all the results.
+    for(auto i = 1; i <= MAX_ITERATIONS; ++i)
+    {
+        // No matter the order, run the kernel 100 times per display.
+        const auto stepSize = (ORDER - 1.0f) / 100;
+
+        // Set the number of iterations to calculate to.
+        kernelGen.setMaxIterations(i);
+
+        // Run the kernel and get the timing report.
+        const auto runTimes = kernelGen.runMandelbrot(true, ORDER, stepSize);
+
+        runTimeMap[i] = runTimes;
+    }
+
+    Helper::printResults(runTimeMap, kernelGen.getTimingNames(), RESULTS_FILE);
 
     SDL_Quit();
 

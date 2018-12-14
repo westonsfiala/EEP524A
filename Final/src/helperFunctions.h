@@ -7,6 +7,7 @@
 #define CL_HPP_MINIMUM_OPENCL_VERSION 200
 #define CL_HPP_TARGET_OPENCL_VERSION 200
 #include <CL/cl2.hpp>
+#include <map>
 
 namespace Helper
 {
@@ -15,6 +16,7 @@ namespace Helper
     double standardDeviation(const std::vector<double>& samples);
     std::pair<double, double> printResults(std::vector<std::pair<LARGE_INTEGER, LARGE_INTEGER>>& times, const std::string& filename);
     std::pair<double, double> printResults(std::vector<std::pair<cl_ulong, cl_ulong>>& times, const std::string& filename);
+    void printResults(std::map<uint32_t, std::vector<double>> timingMap, std::vector<std::string> timingNames, const std::string& filename);
     uint8_t* convert1To4Channel(uint8_t* oneChannelData, const uint32_t& numPixels);
     uint8_t* convert3To4Channel(uint8_t* threeChannelData, const uint32_t& numPixels);
     std::string clGetErrorString(const int &errorCode);

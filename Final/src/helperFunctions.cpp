@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <numeric>
 
 namespace Helper
 {
@@ -113,6 +114,30 @@ std::pair<double, double> printResults(std::vector<std::pair<cl_ulong, cl_ulong>
 
     myfile.close();
     return {average(samples), standardDeviation(samples)};
+}
+
+void printResults(std::map<uint32_t, std::vector<double>> timingMap, std::vector<std::string> timingNames, const std::string& filename)
+{
+    std::ofstream myfile;
+
+    myfile.open(filename, std::ios::out);
+
+    const auto semiColonString = [](std::string a, std::string b) {
+        return std::move(a) + "; " + std::move(b);
+    };
+
+    const auto semiColonDouble = [](std::string a, double b) {
+        return std::move(a) + "; " + std::to_string(b);
+    };
+
+    myfile << "Iterations; " << std::accumulate(std::next(timingNames.begin()), timingNames.end(), timingNames[0], semiColonString) << std::endl;
+
+    for (const auto& timeVector : timingMap)
+    {
+        myfile << std::to_string(timeVector.first) << "; " << std::accumulate(std::next(timeVector.second.begin()), timeVector.second.end(), std::to_string(timeVector.second[0]), semiColonDouble) << std::endl;
+    }
+
+    myfile.close();
 }
 
 uint8_t* convert1To4Channel(uint8_t* oneChannelData, const uint32_t& numPixels)

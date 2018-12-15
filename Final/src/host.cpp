@@ -71,7 +71,7 @@ int main(int argc, char** argv)
 
     kernelGen.setWindowSize(width, height);
 
-    //kernelGen.findOptimalLocalSize(10);
+    kernelGen.findOptimalLocalSize(10);
     //kernelGen.findOptimalMaxIterations();
 
     /*
@@ -95,7 +95,7 @@ int main(int argc, char** argv)
     Helper::printResults(runTimeMap, kernelGen.getTimingNames(), RESULTS_FILE);
     */
 
-    const auto runTimes = kernelGen.runMandelbrot(false, ORDER);
+    const auto runTimes = kernelGen.runMandelbrot(true, ORDER);
 
     SDL_Quit();
 

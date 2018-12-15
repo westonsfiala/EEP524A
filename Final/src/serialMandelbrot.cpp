@@ -218,8 +218,8 @@ int main(int argc, char** argv)
         std::cout << "SDL_GetCurrentDisplayMode Error: " << SDL_GetError() << std::endl;
         return 1;
     }
-    const auto width = dm.w;
-    const auto height = dm.h;
+    const auto width = 512; // dm.w;
+    const auto height = 512; // dm.h;
 
     // Create the SDL window that we will use.
     SDL_Window* win = SDL_CreateWindow("Mandelbrot Set", 0, 0, width, height, SDL_WINDOW_SHOWN);
@@ -268,7 +268,7 @@ int main(int argc, char** argv)
     const auto startTime = std::chrono::system_clock::now();
 
     auto initialState = generateZeroState(left, top, xSide, ySide);
-    for (auto order = 1.0f; order < MAX_ORDER; order += 0.01f)
+    for (auto order = 1.0f; order < MAX_ORDER; order += 0.1f)
     {
 
         const auto bailout = std::pow(std::pow(FLT_MAX, 1.0f / (order + 2.0f)), 1.0f / 2.0f);

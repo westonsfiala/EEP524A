@@ -19,7 +19,7 @@ public:
 
     std::pair<uint32_t, uint32_t> findOptimalLocalSize(uint32_t numRuns);
     uint32_t findOptimalMaxIterations();
-    std::vector<double> runMandelbrot(bool display, float order, float stepSize = 0.01f) const;
+    std::vector<double> runMandelbrot(bool display, float order, float stepSize = 0.01f);
     static std::vector<std::string> getTimingNames();
 
 private:
@@ -35,8 +35,6 @@ private:
         cl::Buffer, // FractalState
         cl::Buffer, // OutputPixels
         cl::Buffer, // Colors
-        uint32_t, // numColors
-        uint32_t, // maxCount
         cl_float, // order
         cl_float // bailout
     > MandelbrotKernel;
@@ -46,13 +44,13 @@ private:
     std::vector<MandelbrotSaveStateOrder> generateZeroStateOrder(float left, float top, float xSide, float ySide) const;
     std::pair<uint32_t, uint32_t> findOptimalLocalSizeOrder(uint32_t numRuns);
     uint32_t findOptimalMaxIterationsOrder();
-    MandelbrotKernel prepareRunStateOrder(cl::Buffer& fractalState, cl::Buffer& outputPixels, cl::Buffer& colors, uint32_t& numColors) const;
-    std::vector<double> runMandelbrotOrder(bool display, float order, float stepSize) const;
+    MandelbrotKernel prepareRunStateOrder(cl::Buffer& fractalState, cl::Buffer& outputPixels, cl::Buffer& colors);
+    std::vector<double> runMandelbrotOrder(bool display, float order, float stepSize);
 
     MandelbrotKernel getKernelFunctor(const std::string& kernelString) const;
 
     std::vector<double> runKernelOrder(MandelbrotKernel kernel, bool showVisuals,
-                                       float maxOrder, float stepSize, cl::Buffer fractalState, cl::Buffer outputPixels, cl::Buffer colors, uint32_t numColors) const;
+                                       float maxOrder, float stepSize, cl::Buffer fractalState, cl::Buffer outputPixels, cl::Buffer colors) const;
 
     bool mIs2;
     uint32_t mMaxGroupSize;
@@ -62,6 +60,7 @@ private:
     std::pair<uint32_t, uint32_t> mWindowSize;
     std::pair<uint32_t, uint32_t> mLocalSize;
     uint32_t mMaxIterations;
+    uint32_t mNumColors;
 
     std::string mPrepend;
 };

@@ -16,11 +16,12 @@
 
 static const auto MAX_X = 1920;
 static const auto MAX_Y = 1080;
-static const auto MAX_ITERATIONS = 1000;
+static const auto MAX_ITERATIONS = 100;
 
 static const auto ZOOM = 1.0f;
 static const auto CENTER = std::make_pair(0, 0);
 static const auto ORDER = 3.0f;
+static const auto MAX_ORDER = 11.0f;
 
 static const float DEFAULT_FIT = 2.5f;
 static const auto ESCAPE_NUM = static_cast<float>(std::min<uint32_t>(UINT32_MAX, 1 << 2 * static_cast<int>(ORDER)));
@@ -113,19 +114,19 @@ std::vector<uint8_t> fractalSaveState(std::vector<MandelbrotSaveState>& lastStat
 }
 
 // Function to draw mandelbrot set 
-std::vector<uint8_t> fractal(const float left, const float top, const float xSide, const float ySide, const int maxCount)
+std::vector<uint8_t> fractal(const uint32_t width, const uint32_t height, const float left, const float top, const float xSide, const float ySide, const int maxCount, const float order, const float bailout, std::vector<uint8_t> colors)
 {
-    auto pixels = std::vector<uint8_t>(MAX_X * MAX_Y, 0);
+    auto pixels = std::vector<uint8_t>(width * height * 3, 0);
     // setting up the xscale and yscale 
-    const auto xScale = xSide / MAX_X;
-    const auto yScale = ySide / MAX_Y;
+    const auto xScale = xSide / width;
+    const auto yScale = ySide / height;
 
     // scanning every point in that rectangular area. 
     // Each point represents a Complex number (x + yi). 
     // Iterate that complex number 
-    for (auto y = 0; y < MAX_Y; y++)
+    for (auto y = 0; y < height; y++)
     {
-        for (auto x = 0; x < MAX_X; x++)
+        for (auto x = 0; x < width; x++)
         {
             // The constant that is added each time.
             auto complexConstant = std::complex<float>(x * xScale + left, y * yScale + top);
@@ -141,32 +142,59 @@ std::vector<uint8_t> fractal(const float left, const float top, const float xSid
             // If you reach the Maximum number of iterations 
             // and If the distance from the origin is 
             // greater than 2 exit the loop 
-            while (abs(complexCalculated) < ESCAPE_NUM && count < maxCount)
+            while (abs(complexCalculated) < bailout && count < maxCount)
             {
-                complexCalculated = pow(complexCalculated, ORDER) + complexConstant;
+                complexCalculated = pow(complexCalculated, order) + complexConstant;
 
                 // Increment count 
                 count = count + 1;
             }
 
-            auto adjustedCount = static_cast<float>(count);
-            // Used to avoid floating point issues with points inside the set.
-            if (count < maxCount)
-            {
-                // sqrt of inner term removed using log simplification rules.
-                const auto logZn = static_cast<float>(log(abs(pow(complexCalculated.real(), 2) + pow(complexCalculated.imag(), 2))) / 2);
-                const auto nu = static_cast<float>(log(logZn / log(ORDER)) / log(ORDER));
-                // Rearranging the potential function.
-                // Dividing log_zn by log(2) instead of log(N = 1<<8)
-                // because we want the entire palette to range from the
-                // center to radius 2, NOT our bailout radius.
-                adjustedCount = count + 1 - nu;
-            }
-
             // To display the created fractal 
-            const auto index = y * MAX_X + x;
+            const auto pixelIndex = (y * width + x) * 3;
 
-            pixels[index] = 255 - static_cast<uint8_t>(255 * adjustedCount / maxCount);
+            if (count == maxCount)
+            {
+                pixels[pixelIndex] = 0;
+                pixels[pixelIndex + 1] = 0;
+                pixels[pixelIndex + 2] = 0;
+            }
+            else
+            {
+                const auto logZn = static_cast<float>(log(abs(complexCalculated)));
+                const auto nu = static_cast<float>(log(logZn / log(bailout)) / log(order));
+                const auto adjustedCount = 1.0f - nu;
+
+                const int index1 = (static_cast<int>(floor(adjustedCount)) + count + 1) % (colors.size() / 3);
+                const int index2 = (static_cast<int>(floor(adjustedCount)) + count) % (colors.size() / 3);
+
+                //printf("%i %i mod %i -> %i %i\n", (saveState.count + 1), saveState.count, numColors, index1, index2);
+
+                const auto colorIndex1 = 3 * index1;
+                const auto colorIndex2 = 3 * index2;
+
+                // Get all the colors based off of what was given to us, and the one plus of what was given to us.
+                const auto red1 = colors[colorIndex1];
+                const auto green1 = colors[colorIndex1 + 1];
+                const auto blue1 = colors[colorIndex1 + 2];
+
+                const auto red2 = colors[colorIndex2];
+                const auto green2 = colors[colorIndex2 + 1];
+                const auto blue2 = colors[colorIndex2 + 2];
+
+                // Find the weightings for the smoothing.
+                const auto weight1 = adjustedCount;
+                const auto weight2 = 1.0f - weight1;
+
+                // Smooth each of the lanes.
+                const auto red = static_cast<unsigned char>(red1 * weight1 + red2 * weight2);
+                const auto green = static_cast<unsigned char>(green1 * weight1 + green2 * weight2);
+                const auto blue = static_cast<unsigned char>(blue1 * weight1 + blue2 * weight2);
+
+                pixels[pixelIndex] = red;
+                pixels[pixelIndex + 1] = green;
+                pixels[pixelIndex + 2] = blue;
+            }
         }
     }
 
@@ -183,8 +211,18 @@ int main(int argc, char** argv)
         return 1;
     }
 
+
+    SDL_DisplayMode dm;
+    if (SDL_GetCurrentDisplayMode(0, &dm) != 0)
+    {
+        std::cout << "SDL_GetCurrentDisplayMode Error: " << SDL_GetError() << std::endl;
+        return 1;
+    }
+    const auto width = dm.w;
+    const auto height = dm.h;
+
     // Create the SDL window that we will use.
-    SDL_Window* win = SDL_CreateWindow("Mandelbrot Set", 0, 0, MAX_X, MAX_Y, SDL_WINDOW_SHOWN);
+    SDL_Window* win = SDL_CreateWindow("Mandelbrot Set", 0, 0, width, height, SDL_WINDOW_SHOWN);
     if (win == nullptr)
     {
         std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
@@ -199,11 +237,19 @@ int main(int argc, char** argv)
         SDL_DestroyWindow(win);
         std::cout << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
         SDL_Quit();
-        return 1;
+        return {};
+    }
+
+    SDL_Texture* tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, width, height);
+    if (tex == nullptr)
+    {
+        std::cout << "SDL_CreateTexture Error: " << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return {};
     }
 
     // Get the Screen Ratio
-    const auto screenRatio = static_cast<float>(MAX_X) / MAX_Y;
+    const auto screenRatio = static_cast<float>(width) / height;
 
     // Center it and set the zoom level.
     // I don't know why this number is needed, but it centers it.
@@ -212,36 +258,40 @@ int main(int argc, char** argv)
     const auto xSide = 2.5f * screenRatio / ZOOM;
     const auto ySide = 2.5f / ZOOM;
 
+
+    const std::vector<uint8_t> colors = { 
+        255, 0, 0, // Red
+        0, 255, 0, // Green
+        0, 0, 255  // Blue
+    };
+
     const auto startTime = std::chrono::system_clock::now();
 
     auto initialState = generateZeroState(left, top, xSide, ySide);
-    for (auto i = 5; i < MAX_ITERATIONS; ++i)
+    for (auto order = 1.0f; order < MAX_ORDER; order += 0.01f)
     {
-        // Function calling 
-        auto pixelColor = fractalSaveState(initialState, i);
 
-        auto pixelMap = std::vector<uint8_t>();
-        for (auto pixel : pixelColor)
+        const auto bailout = std::pow(std::pow(FLT_MAX, 1.0f / (order + 2.0f)), 1.0f / 2.0f);
+
+        auto pixelColor = fractal(width, height, left, top, xSide, ySide, MAX_ITERATIONS, order, bailout, colors);
+
+        void* pixels = nullptr;
+        auto pitch = 0;
+        if (SDL_LockTexture(tex, nullptr, &pixels, &pitch) != 0)
         {
-            pixelMap.push_back(pixel);
-            pixelMap.push_back(pixel);
-            pixelMap.push_back(pixel);
-            pixelMap.push_back(255);
-        }
-
-        // Create our surface from the 
-        SDL_Surface* surf = SDL_CreateRGBSurfaceFrom(static_cast<void*>(pixelMap.data()), MAX_X, MAX_Y, 32, MAX_X * 4, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
-
-        SDL_Texture* tex = SDL_CreateTextureFromSurface(ren, surf);
-        SDL_FreeSurface(surf);
-        if (tex == nullptr)
-        {
+            SDL_DestroyTexture(tex);
             SDL_DestroyRenderer(ren);
             SDL_DestroyWindow(win);
-            std::cout << "SDL_CreateTextureFromSurface Error: " << SDL_GetError() << std::endl;
+            std::cout << "SDL_LockTexture Error: " << SDL_GetError() << std::endl;
             SDL_Quit();
-            return 1;
+            return {};
         }
+
+        // Push the pixels to the texture.
+        memcpy(pixels, pixelColor.data(), pitch * height);
+
+        // Unlock the texture so that it updates.
+        SDL_UnlockTexture(tex);
 
         //First clear the renderer
         SDL_RenderClear(ren);
@@ -249,12 +299,11 @@ int main(int argc, char** argv)
         SDL_RenderCopy(ren, tex, nullptr, nullptr);
         //Update the screen
         SDL_RenderPresent(ren);
-        // Get rid of the texture
-        SDL_DestroyTexture(tex);
     }
 
     const auto endTime = std::chrono::system_clock::now();
 
+    SDL_DestroyTexture(tex);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
     SDL_Quit();

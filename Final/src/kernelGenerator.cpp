@@ -24,6 +24,7 @@ KernelGenerator::KernelGenerator(const bool is2, const uint32_t maxGroupSize, co
     mWindowSize = {512, 512};
     mLocalSize = {4, 4};
     mMaxIterations = 100;
+    mNumColors = 0;
 }
 
 void KernelGenerator::setWindowSize(uint32_t width, uint32_t height)
@@ -70,7 +71,7 @@ uint32_t KernelGenerator::findOptimalMaxIterations()
     return mMaxIterations;
 }
 
-std::vector<double> KernelGenerator::runMandelbrot(bool display, const float order, const float stepSize) const
+std::vector<double> KernelGenerator::runMandelbrot(bool display, const float order, const float stepSize)
 {
     // If we have the type 'order' run the program.
     if (mMandelbrotType == Order)
@@ -108,8 +109,6 @@ std::string KernelGenerator::getIncreaseOrderString() const
     kernelString << "    global const struct MandelbrotInitialStateOrder* initialStates," << std::endl;
     kernelString << "    global unsigned char* outputPixels," << std::endl;
     kernelString << "    global const unsigned char* colors," << std::endl;
-    kernelString << "    const unsigned int numColors," << std::endl;
-    kernelString << "    const unsigned int maxCount," << std::endl;
     kernelString << "    const float order," << std::endl;
     kernelString << "    const float bailout" << std::endl;
     kernelString << ")" << std::endl;
@@ -126,7 +125,7 @@ std::string KernelGenerator::getIncreaseOrderString() const
     kernelString << "    unsigned int count = 1;" << std::endl;
     kernelString << "    float tempAbs = cabsf(complexVal);" << std::endl;
     kernelString << "        " << std::endl;
-    kernelString << "    while (tempAbs < bailout && count < maxCount)" << std::endl;
+    kernelString << "    while (tempAbs < bailout && count < " << std::to_string(mMaxIterations) << ")" << std::endl;
     kernelString << "    {" << std::endl;
     kernelString << "        const float2 power = { order, 0.0f };" << std::endl;
     kernelString << "        " << std::endl;
@@ -143,7 +142,7 @@ std::string KernelGenerator::getIncreaseOrderString() const
     kernelString << "    const int pixelIndex = 3 * index;" << std::endl;
     kernelString << "        " << std::endl;
     kernelString << "    // See if we reached the max count, if so output black pixels." << std::endl;
-    kernelString << "    if (count == maxCount)" << std::endl;
+    kernelString << "    if (count == " << std::to_string(mMaxIterations) << ")" << std::endl;
     kernelString << "    {" << std::endl;
     kernelString << "        outputPixels[pixelIndex] = 0;" << std::endl;
     kernelString << "        outputPixels[pixelIndex + 1] = 0;" << std::endl;
@@ -158,8 +157,8 @@ std::string KernelGenerator::getIncreaseOrderString() const
     kernelString << "        const float adjust = (float)log10(logZn / log10(bailout)) / log10(order);" << std::endl;
     kernelString << "        float adjustedCount = 1.0f - adjust;" << std::endl;
     kernelString << "" << std::endl;
-    kernelString << "        const int index1 = ((int)floor(adjustedCount) + count + 1) % numColors;" << std::endl;
-    kernelString << "        const int index2 = ((int)floor(adjustedCount) + count) % numColors;" << std::endl;
+    kernelString << "        const int index1 = ((int)floor(adjustedCount) + count + 1) % " << std::to_string(mNumColors) << ";" << std::endl;
+    kernelString << "        const int index2 = ((int)floor(adjustedCount) + count) % " << std::to_string(mNumColors) << ";" << std::endl;
     kernelString << "        " << std::endl;
     kernelString << "        const int colorIndex1 = 3 * index1;" << std::endl;
     kernelString << "        const int colorIndex2 = 3 * index2;" << std::endl;
@@ -220,8 +219,7 @@ std::pair<uint32_t, uint32_t> KernelGenerator::findOptimalLocalSizeOrder(const u
     cl::Buffer zeroStateBuffer;
     cl::Buffer outputPixelBuffer;
     cl::Buffer colorBuffer;
-    uint32_t numColors;
-    const auto kernel = prepareRunStateOrder(zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
+    const auto kernel = prepareRunStateOrder(zeroStateBuffer, outputPixelBuffer, colorBuffer);
 
     // Prepare for the timing analysis
     std::map<std::pair<uint32_t, uint32_t>, double> timingMap;
@@ -256,7 +254,7 @@ std::pair<uint32_t, uint32_t> KernelGenerator::findOptimalLocalSizeOrder(const u
 
             for (uint32_t run = 0; run < numRuns; run++)
             {
-                const auto runTime = runKernelOrder(kernel, false, 2.0f, 1.0f, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
+                const auto runTime = runKernelOrder(kernel, false, 2.0f, 1.0f, zeroStateBuffer, outputPixelBuffer, colorBuffer);
                 runTimes.push_back(static_cast<double>(runTime[0]));
             }
 
@@ -292,8 +290,7 @@ uint32_t KernelGenerator::findOptimalMaxIterationsOrder()
     cl::Buffer zeroStateBuffer;
     cl::Buffer outputPixelBuffer;
     cl::Buffer colorBuffer;
-    uint32_t numColors;
-    const auto kernel = prepareRunStateOrder(zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
+    const auto kernel = prepareRunStateOrder(zeroStateBuffer, outputPixelBuffer, colorBuffer);
 
     auto runtime = 0.0;
     auto lastRuntime = 0.0;
@@ -304,7 +301,7 @@ uint32_t KernelGenerator::findOptimalMaxIterationsOrder()
     while ((runtime + lastRuntime) / 2.0 < 0.25)
     {
         std::cout << "Starting timing for max iterations = " << std::to_string(mMaxIterations) << std::endl;
-        auto runTimes = runKernelOrder(kernel, false, 2.0f, 1.0f, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
+        auto runTimes = runKernelOrder(kernel, false, 2.0f, 1.0f, zeroStateBuffer, outputPixelBuffer, colorBuffer);
 
         lastRuntime = runtime;
         // The third runtime is the kernel runtime.
@@ -319,7 +316,7 @@ uint32_t KernelGenerator::findOptimalMaxIterationsOrder()
     return mMaxIterations;
 }
 
-KernelGenerator::MandelbrotKernel KernelGenerator::prepareRunStateOrder(cl::Buffer& fractalState, cl::Buffer& outputPixels, cl::Buffer& colors, uint32_t& numColors) const
+KernelGenerator::MandelbrotKernel KernelGenerator::prepareRunStateOrder(cl::Buffer& fractalState, cl::Buffer& outputPixels, cl::Buffer& colors)
 {
     auto kernel = getKernelFunctor(getIncreaseOrderString());
     const auto width = mWindowSize.first;
@@ -350,23 +347,22 @@ KernelGenerator::MandelbrotKernel KernelGenerator::prepareRunStateOrder(cl::Buff
     colors = cl::Buffer(colorVector.begin(), colorVector.end(), true);
 
     // Number of colors
-    numColors = static_cast<uint32_t>(colorVector.size() / 3);
+    mNumColors = static_cast<uint32_t>(colorVector.size() / 3);
 
     return kernel;
 }
 
-std::vector<double> KernelGenerator::runMandelbrotOrder(const bool display, const float order, const float stepSize) const
+std::vector<double> KernelGenerator::runMandelbrotOrder(const bool display, const float order, const float stepSize)
 {
     cl::Buffer zeroStateBuffer;
     cl::Buffer outputPixelBuffer;
     cl::Buffer colorBuffer;
-    uint32_t numColors;
-    const auto kernel = prepareRunStateOrder(zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
+    const auto kernel = prepareRunStateOrder(zeroStateBuffer, outputPixelBuffer, colorBuffer);
 
-    return runKernelOrder(kernel, display, order, stepSize, zeroStateBuffer, outputPixelBuffer, colorBuffer, numColors);
+    return runKernelOrder(kernel, display, order, stepSize, zeroStateBuffer, outputPixelBuffer, colorBuffer);
 }
 
-cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, uint32_t, uint32_t, cl_float, cl_float> KernelGenerator::getKernelFunctor(const std::string& kernelString) const
+cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, cl_float, cl_float> KernelGenerator::getKernelFunctor(const std::string& kernelString) const
 {
     // Get the kernel string for the mandelbrot kernel.
     const std::vector<std::string> programStrings{kernelString};
@@ -404,8 +400,6 @@ cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, uint32_t, uint32_t, cl_flo
         cl::Buffer, // FractalState
         cl::Buffer, // OutputPixels
         cl::Buffer, // Colors
-        uint32_t, // numColors
-        uint32_t, // maxCount
         cl_float, // order
         cl_float // bailout
     >(mandelbrotProgram, KERNEL_NAME);
@@ -414,7 +408,7 @@ cl::KernelFunctor<cl::Buffer, cl::Buffer, cl::Buffer, uint32_t, uint32_t, cl_flo
 }
 
 std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, const bool showVisuals, const float maxOrder, const float stepSize,
-                                                    const cl::Buffer fractalState, const cl::Buffer outputPixels, const cl::Buffer colors, const uint32_t numColors) const
+                                                    const cl::Buffer fractalState, const cl::Buffer outputPixels, const cl::Buffer colors) const
 {
     cl::Event myEvent;
     SDL_Window* win;
@@ -516,8 +510,6 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
             fractalState,
             outputPixels,
             colors,
-            numColors,
-            mMaxIterations,
             order,
             bailout
         );
@@ -591,8 +583,6 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
                 fractalState,
                 doubleBufferPixels,
                 colors,
-                numColors,
-                mMaxIterations,
                 order,
                 bailout2
             );
@@ -631,7 +621,7 @@ std::vector<double> KernelGenerator::runKernelOrder(MandelbrotKernel kernel, con
 
         startSubTime = std::chrono::system_clock::now();
         //Clear the renderer
-        SDL_RenderClear(ren);
+        //SDL_RenderClear(ren);
         //Draw the texture
         SDL_RenderCopy(ren, tex, nullptr, nullptr);
         //Update the screen

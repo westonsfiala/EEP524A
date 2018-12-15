@@ -20,7 +20,7 @@ static const std::string MANDELBROT_KERNEL_NAME = "Mandelbrot";
 static const std::string MANDELBROT_KERNEL_FILE = SRC_DIRECTORY + MANDELBROT_KERNEL_NAME + ".cl";
 static const std::string CLCOMPLEX_HEADER_FILE = SRC_DIRECTORY + "clcomplex.h";
 
-static const auto MAX_ITERATIONS = 1000;
+static const auto MAX_ITERATIONS = 150;
 static const auto ORDER = 11.0f;
 
 int main(int argc, char** argv)
@@ -71,9 +71,10 @@ int main(int argc, char** argv)
 
     kernelGen.setWindowSize(width, height);
 
-    //kernelGen.findOptimalLocalSize(5);
+    //kernelGen.findOptimalLocalSize(10);
     //kernelGen.findOptimalMaxIterations();
 
+    /*
     std::map<uint32_t, std::vector<double>> runTimeMap;
     
     // Loop over 1 -> max iterations and print out all the results.
@@ -86,12 +87,15 @@ int main(int argc, char** argv)
         kernelGen.setMaxIterations(i);
 
         // Run the kernel and get the timing report.
-        const auto runTimes = kernelGen.runMandelbrot(true, ORDER, stepSize);
+        const auto runTimes = kernelGen.runMandelbrot(false, ORDER, stepSize);
 
         runTimeMap[i] = runTimes;
     }
 
     Helper::printResults(runTimeMap, kernelGen.getTimingNames(), RESULTS_FILE);
+    */
+
+    const auto runTimes = kernelGen.runMandelbrot(false, ORDER);
 
     SDL_Quit();
 

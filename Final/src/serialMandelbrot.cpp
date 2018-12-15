@@ -218,8 +218,8 @@ int main(int argc, char** argv)
         std::cout << "SDL_GetCurrentDisplayMode Error: " << SDL_GetError() << std::endl;
         return 1;
     }
-    const auto width = 512; // dm.w;
-    const auto height = 512; // dm.h;
+    const auto width = dm.w;
+    const auto height = dm.h;
 
     // Create the SDL window that we will use.
     SDL_Window* win = SDL_CreateWindow("Mandelbrot Set", 0, 0, width, height, SDL_WINDOW_SHOWN);
